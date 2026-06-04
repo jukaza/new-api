@@ -53,31 +53,5 @@ export function LanguageSwitcher() {
     [i18n, user]
   )
 
-  return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger
-        render={<Button variant='ghost' size='icon' className='h-9 w-9' />}
-      >
-        <Languages className='size-[1.2rem]' />
-        <span className='sr-only'>{t('Change language')}</span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align='end'>
-        {INTERFACE_LANGUAGE_OPTIONS.map((lang) => (
-          <DropdownMenuItem
-            key={lang.code}
-            onClick={() => handleChangeLanguage(lang.code)}
-          >
-            {lang.label}
-            <Check
-              size={14}
-              className={cn(
-                'ms-auto',
-                currentLanguage !== lang.code && 'hidden'
-              )}
-            />
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
+  return null
 }

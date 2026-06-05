@@ -3,59 +3,113 @@ import re
 
 chinese_re = re.compile(r'[\u4e00-\u9fa5]')
 
-def find_chinese_in_strings(file_path):
+def strip_line_comments(line):
+    """Remove // comments, respecting string literals."""
+    result = []
+    i = 0
+    in_string = False
+    string_char = None
+    escape = False
+    while i < len(line):
+        c = line[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif c == '\\':
+                escape = True
+            elif c == string_char:
+                in_string = False
+        else:
+            if c == '"' or c == '`':
+                in_string = True
+                string_char = c
+                escape = False
+            elif c == '/' and i + 1 < len(line) and line[i + 1] == '/':
+                break
+        result.append(c)
+        i += 1
+    return ''.join(result)
+
+def extract_string_literals(line):
+    """Extract Go string literals ("..." and `...`) from a line."""
+    strings = []
+    i = 0
+    in_string = False
+    string_char = None
+    start = 0
+    escape = False
+    while i < len(line):
+        c = line[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif c == '\\':
+                escape = True
+            elif c == string_char:
+                strings.append(line[start:i + 1])
+                in_string = False
+        else:
+            if c == '"' or c == '`':
+                in_string = True
+                string_char = c
+                start = i
+                escape = False
+        i += 1
+    return strings
+
+def find_chinese_in_code(file_path):
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
         content = f.read()
-    
+
     results = []
     lines = content.split('\n')
-    
+
     for i, line in enumerate(lines, 1):
         if not chinese_re.search(line):
             continue
-        
-        stripped = line.strip()
-        if stripped.startswith('//'):
+
+        # Remove block comments /* ... */ (simple version, single line only)
+        line_no_block = re.sub(r'/\*.*?\*/', '', line)
+
+        # Remove line comments // ...
+        code_part = strip_line_comments(line_no_block)
+
+        if not chinese_re.search(code_part):
             continue
-            
-        double_quote_strings = re.findall(r'"([^"\\]|\\.)*"', line)
-        backtick_strings = re.findall(r'`([^`\\]|\\.)*`', line)
-        
+
+        # Extract string literals from the code part
+        strings = extract_string_literals(code_part)
         has_chinese_string = False
-        for s in double_quote_strings + backtick_strings:
-            if any(chinese_re.search(part) for part in s if isinstance(part, str)):
+        for s in strings:
+            if chinese_re.search(s):
                 has_chinese_string = True
                 break
-        
-        if '//' in line:
-            parts = line.split('//')
-            left = parts[0]
-            if chinese_re.search(left):
-                has_chinese_string = True
-                
-        if has_chinese_string or (chinese_re.search(line) and not stripped.startswith('//') and not stripped.startswith('/*') and not stripped.endswith('*/')):
-            results.append((i, line.strip()))
-            
+
+        if has_chinese_string:
+            results.append((i, line.rstrip()))
+
     return results
 
 def main():
     exclude_dirs = {'web', '.git', '.rsbuild', 'node_modules', 'dist', 'bin'}
     go_files_with_chinese = []
-    
+
     for root, dirs, files in os.walk('.'):
         dirs[:] = [d for d in dirs if d not in exclude_dirs]
         for file in files:
             if file.endswith('.go'):
                 path = os.path.join(root, file)
-                res = find_chinese_in_strings(path)
+                res = find_chinese_in_code(path)
                 if res:
                     go_files_with_chinese.append((path, res))
-                    
+
     with open('chinese_go_results.txt', 'w', encoding='utf-8') as f:
         for path, res in go_files_with_chinese:
             f.write(f"\nFILE: {path}\n")
             for line_num, content in res:
                 f.write(f"  Line {line_num}: {content}\n")
+
+    print(f"Tìm thấy {len(go_files_with_chinese)} file, {sum(len(r) for _, r in go_files_with_chinese)} dòng có chứa tiếng Trung trong code string.")
 
 if __name__ == '__main__':
     main()

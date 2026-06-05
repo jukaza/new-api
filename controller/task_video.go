@@ -187,7 +187,7 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 
 							if quotaDelta > 0 {
 								// 需要补扣费
-								logger.LogInfo(ctx, fmt.Sprintf("视频任务 %s 预扣费后补扣费：%s（实际消耗：%s，预扣费：%s，tokens：%d）",
+								logger.LogInfo(ctx, fmt.Sprintf("Nhiệm vụ video %s trừ phí bổ sung sau khi trừ trước: %s (tiêu thụ thực tế: %s, trừ trước: %s, tokens: %d)",
 									task.TaskID,
 									logger.LogQuota(quotaDelta),
 									logger.LogQuota(actualQuota),
@@ -195,14 +195,14 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 									taskResult.TotalTokens,
 								))
 								if err := model.DecreaseUserQuota(task.UserId, quotaDelta, false); err != nil {
-									logger.LogError(ctx, fmt.Sprintf("补扣费失败: %s", err.Error()))
+									logger.LogError(ctx, fmt.Sprintf("Trừ phí bổ sung thất bại: %s", err.Error()))
 								} else {
 									model.UpdateUserUsedQuotaAndRequestCount(task.UserId, quotaDelta)
 									model.UpdateChannelUsedQuota(task.ChannelId, quotaDelta)
 									task.Quota = actualQuota // 更新任务记录的实际扣费额度
 
 									// 记录消费日志
-									logContent := fmt.Sprintf("视频任务成功补扣费，模型倍率 %.2f，分组倍率 %.2f，tokens %d，预扣费 %s，实际扣费 %s，补扣费 %s",
+									logContent := fmt.Sprintf("Nhiệm vụ video đã trừ phí bổ sung thành công, hệ số nhân mô hình %.2f, hệ số nhân nhóm %.2f, tokens %d, trừ trước %s, trừ thực tế %s, trừ bổ sung %s",
 										modelRatio, finalGroupRatio, taskResult.TotalTokens,
 										logger.LogQuota(preConsumedQuota), logger.LogQuota(actualQuota), logger.LogQuota(quotaDelta))
 									model.RecordLog(task.UserId, model.LogTypeSystem, logContent)
@@ -210,7 +210,7 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 							} else if quotaDelta < 0 {
 								// 需要退还多扣的费用
 								refundQuota := -quotaDelta
-								logger.LogInfo(ctx, fmt.Sprintf("视频任务 %s 预扣费后返还：%s（实际消耗：%s，预扣费：%s，tokens：%d）",
+								logger.LogInfo(ctx, fmt.Sprintf("Nhiệm vụ video %s hoàn trả sau khi trừ trước: %s (tiêu thụ thực tế: %s, trừ trước: %s, tokens: %d)",
 									task.TaskID,
 									logger.LogQuota(refundQuota),
 									logger.LogQuota(actualQuota),
@@ -218,19 +218,19 @@ func updateVideoSingleTask(ctx context.Context, adaptor channel.TaskAdaptor, cha
 									taskResult.TotalTokens,
 								))
 								if err := model.IncreaseUserQuota(task.UserId, refundQuota, false); err != nil {
-									logger.LogError(ctx, fmt.Sprintf("退还预扣费失败: %s", err.Error()))
+									logger.LogError(ctx, fmt.Sprintf("Hoàn trả phí trừ trước thất bại: %s", err.Error()))
 								} else {
 									task.Quota = actualQuota // 更新任务记录的实际扣费额度
 
 									// 记录退款日志
-									logContent := fmt.Sprintf("视频任务成功退还多扣费用，模型倍率 %.2f，分组倍率 %.2f，tokens %d，预扣费 %s，实际扣费 %s，退还 %s",
+									logContent := fmt.Sprintf("Nhiệm vụ video đã hoàn trả số tiền trừ thừa thành công, hệ số nhân mô hình %.2f, hệ số nhân nhóm %.2f, tokens %d, trừ trước %s, trừ thực tế %s, hoàn trả %s",
 										modelRatio, finalGroupRatio, taskResult.TotalTokens,
 										logger.LogQuota(preConsumedQuota), logger.LogQuota(actualQuota), logger.LogQuota(refundQuota))
 									model.RecordLog(task.UserId, model.LogTypeSystem, logContent)
 								}
 							} else {
 								// quotaDelta == 0, 预扣费刚好准确
-								logger.LogInfo(ctx, fmt.Sprintf("视频任务 %s 预扣费准确（%s，tokens：%d）",
+								logger.LogInfo(ctx, fmt.Sprintf("Nhiệm vụ video %s trừ trước chính xác (%s, tokens: %d)",
 									task.TaskID, logger.LogQuota(actualQuota), taskResult.TotalTokens))
 							}
 						}

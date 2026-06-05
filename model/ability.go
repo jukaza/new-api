@@ -74,7 +74,7 @@ func getPriority(group string, model string, retry int) (int, error) {
 
 	if len(priorities) == 0 {
 		// 如果没有查询到优先级，则返回错误
-		return 0, errors.New("Tính nhất quán của cơ sở dữ liệu đã bị hỏng")
+		return 0, errors.New("Lỗi nhất quán dữ liệu")
 	}
 
 	// 确定要使用的优先级

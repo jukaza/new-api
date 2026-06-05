@@ -49,8 +49,8 @@ func sweepTimedOutTasks(ctx context.Context) {
 	}
 
 	const legacyTaskCutoff int64 = 1740182400 // 2026-02-22 00:00:00 UTC
-	reason := fmt.Sprintf("Nhiệm vụ quá thời gian (%d phút)", constant.TaskTimeoutMinutes)
-	legacyReason := "Nhiệm vụ quá thời gian (Nhiệm vụ cũ còn sót lại từ hệ thống trước, không hỗ trợ hoàn tiền, vui lòng liên hệ quản trị viên)"
+	reason := fmt.Sprintf("Task đã timeout (%d phút)", constant.TaskTimeoutMinutes)
+	legacyReason := "Task đã timeout (Task cũ còn sót lại từ hệ thống trước, không hỗ trợ hoàn tiền, vui lòng liên hệ quản trị viên)"
 	now := time.Now().Unix()
 	timedOutCount := 0
 
@@ -156,14 +156,14 @@ func UpdateSunoTasks(ctx context.Context, taskChannelM map[int][]string, taskM m
 	for channelId, taskIds := range taskChannelM {
 		err := updateSunoTasks(ctx, channelId, taskIds, taskM)
 		if err != nil {
-			logger.LogError(ctx, fmt.Sprintf("渠道 #%d 更新异步任务失败: %s", channelId, err.Error()))
+			logger.LogError(ctx, fmt.Sprintf("Kênh #%d cập nhật tác vụ bất đồng bộ thất bại: %s", channelId, err.Error()))
 		}
 	}
 	return nil
 }
 
 func updateSunoTasks(ctx context.Context, channelId int, taskIds []string, taskM map[string]*model.Task) error {
-	logger.LogInfo(ctx, fmt.Sprintf("渠道 #%d 未完成的任务有: %d", channelId, len(taskIds)))
+	logger.LogInfo(ctx, fmt.Sprintf("Kênh #%d có tác vụ chưa hoàn thành: %d", channelId, len(taskIds)))
 	if len(taskIds) == 0 {
 		return nil
 	}
@@ -216,7 +216,7 @@ func updateSunoTasks(ctx context.Context, channelId int, taskIds []string, taskM
 		return err
 	}
 	if !responseItems.IsSuccess() {
-		common.SysLog(fmt.Sprintf("渠道 #%d 未完成的任务有: %d, 成功获取到任务数: %s", channelId, len(taskIds), string(responseBody)))
+		common.SysLog(fmt.Sprintf("Kênh #%d có tác vụ chưa hoàn thành: %d, số tác vụ lấy thành công: %s", channelId, len(taskIds), string(responseBody)))
 		return err
 	}
 

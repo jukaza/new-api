@@ -156,10 +156,10 @@ func TestBuildUpstreamModelUpdateTaskNotificationContent_OmitOverflowDetails(t *
 		},
 	)
 
-	require.Contains(t, content, "其余 4 个渠道已省略")
-	require.Contains(t, content, "其余 1 个已省略")
-	require.Contains(t, content, "失败渠道 ID（展示 10/12）")
-	require.Contains(t, content, "其余 2 个已省略")
+	require.Contains(t, content, "Đã bỏ qua 4 kênh còn lại")
+	require.Contains(t, content, "Đã bỏ qua 1 kênh còn lại")
+	require.Contains(t, content, "ID kênh thất bại (hiển thị 10/12)")
+	require.Contains(t, content, "Đã bỏ qua 2 kênh còn lại")
 }
 
 func TestShouldSendUpstreamModelUpdateNotification(t *testing.T) {

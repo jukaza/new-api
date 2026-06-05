@@ -143,7 +143,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 	var req dto.UpstreamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		common.SysError("failed to bind upstream request: " + err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Định dạng tham số yêu cầu không hợp lệ"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "Tham số yêu cầu không hợp lệ"})
 		return
 	}
 
@@ -187,7 +187,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 	}
 
 	if len(upstreams) == 0 {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Không có kênh thượng nguồn hợp lệ"})
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Không có kênh upstream hợp lệ"})
 		return
 	}
 
@@ -394,7 +394,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 			}
 			if err := common.Unmarshal(body.Data, &pricingItems); err != nil {
 				logger.LogWarn(c.Request.Context(), "unrecognized data format from "+chItem.Name+": "+err.Error())
-				ch <- upstreamResult{Name: uniqueName, Err: "Không thể phân tích dữ liệu trả về từ thượng nguồn"}
+				ch <- upstreamResult{Name: uniqueName, Err: "Không thể phân tích dữ liệu trả về từ upstream"}
 				return
 			}
 

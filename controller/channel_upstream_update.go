@@ -279,7 +279,7 @@ func fetchChannelUpstreamModelIDs(channel *model.Channel) ([]string, error) {
 	if channel.Type == constant.ChannelTypeGemini {
 		key, _, apiErr := channel.GetNextEnabledKey()
 		if apiErr != nil {
-			return nil, fmt.Errorf("获取渠道密钥失败: %w", apiErr)
+			return nil, fmt.Errorf("Lấy khóa kênh thất bại: %w", apiErr)
 		}
 		key = strings.TrimSpace(key)
 		models, err := gemini.FetchGeminiModels(baseURL, key, channel.GetSetting().Proxy)
@@ -317,7 +317,7 @@ func fetchChannelUpstreamModelIDs(channel *model.Channel) ([]string, error) {
 
 	key, _, apiErr := channel.GetNextEnabledKey()
 	if apiErr != nil {
-		return nil, fmt.Errorf("获取渠道密钥失败: %w", apiErr)
+		return nil, fmt.Errorf("Lấy khóa kênh thất bại: %w", apiErr)
 	}
 	key = strings.TrimSpace(key)
 
@@ -455,7 +455,7 @@ func buildUpstreamModelUpdateTaskNotificationContent(
 	var builder strings.Builder
 	failedChannels := len(failedChannelIDs)
 	builder.WriteString(fmt.Sprintf(
-		"上游模型巡检摘要：检测渠道 %d 个，发现变更 %d 个，新增 %d 个，删除 %d 个，自动同步新增 %d 个，失败 %d 个。",
+		"Tóm tắt kiểm tra mô hình upstream: Đã kiểm tra %d kênh, phát hiện %d thay đổi, %d thêm mới, %d xóa, tự động đồng bộ thêm %d, %d thất bại.",
 		checkedChannels,
 		changedChannels,
 		detectedAddModels,
@@ -466,38 +466,38 @@ func buildUpstreamModelUpdateTaskNotificationContent(
 
 	if len(channelSummaries) > 0 {
 		displayCount := min(len(channelSummaries), channelUpstreamModelUpdateNotifyMaxChannelDetails)
-		builder.WriteString(fmt.Sprintf("\n\n变更渠道明细（展示 %d/%d）：", displayCount, len(channelSummaries)))
+		builder.WriteString(fmt.Sprintf("\n\nChi tiết các kênh đã thay đổi (hiển thị %d/%d):", displayCount, len(channelSummaries)))
 		for _, summary := range channelSummaries[:displayCount] {
 			builder.WriteString(fmt.Sprintf("\n- %s (+%d / -%d)", summary.ChannelName, summary.AddCount, summary.RemoveCount))
 		}
 		if len(channelSummaries) > displayCount {
-			builder.WriteString(fmt.Sprintf("\n- 其余 %d 个渠道已省略", len(channelSummaries)-displayCount))
+			builder.WriteString(fmt.Sprintf("\n- Đã bỏ qua %d kênh còn lại", len(channelSummaries)-displayCount))
 		}
 	}
 
 	normalizedAddModelSamples := normalizeModelNames(addModelSamples)
 	if len(normalizedAddModelSamples) > 0 {
 		displayCount := min(len(normalizedAddModelSamples), channelUpstreamModelUpdateNotifyMaxModelDetails)
-		builder.WriteString(fmt.Sprintf("\n\n新增模型示例（展示 %d/%d）：%s",
+		builder.WriteString(fmt.Sprintf("\n\nVí dụ mô hình mới (hiển thị %d/%d): %s",
 			displayCount,
 			len(normalizedAddModelSamples),
 			strings.Join(normalizedAddModelSamples[:displayCount], ", "),
 		))
 		if len(normalizedAddModelSamples) > displayCount {
-			builder.WriteString(fmt.Sprintf("（其余 %d 个已省略）", len(normalizedAddModelSamples)-displayCount))
+			builder.WriteString(fmt.Sprintf("(Đã bỏ qua %d còn lại)", len(normalizedAddModelSamples)-displayCount))
 		}
 	}
 
 	normalizedRemoveModelSamples := normalizeModelNames(removeModelSamples)
 	if len(normalizedRemoveModelSamples) > 0 {
 		displayCount := min(len(normalizedRemoveModelSamples), channelUpstreamModelUpdateNotifyMaxModelDetails)
-		builder.WriteString(fmt.Sprintf("\n\n删除模型示例（展示 %d/%d）：%s",
+		builder.WriteString(fmt.Sprintf("\n\nVí dụ mô hình đã xóa (hiển thị %d/%d): %s",
 			displayCount,
 			len(normalizedRemoveModelSamples),
 			strings.Join(normalizedRemoveModelSamples[:displayCount], ", "),
 		))
 		if len(normalizedRemoveModelSamples) > displayCount {
-			builder.WriteString(fmt.Sprintf("（其余 %d 个已省略）", len(normalizedRemoveModelSamples)-displayCount))
+			builder.WriteString(fmt.Sprintf("(Đã bỏ qua %d còn lại)", len(normalizedRemoveModelSamples)-displayCount))
 		}
 	}
 
@@ -507,13 +507,13 @@ func buildUpstreamModelUpdateTaskNotificationContent(
 			return fmt.Sprintf("%d", channelID)
 		})
 		builder.WriteString(fmt.Sprintf(
-			"\n\n失败渠道 ID（展示 %d/%d）：%s",
+			"\n\nID kênh thất bại (hiển thị %d/%d): %s",
 			displayCount,
 			failedChannels,
 			strings.Join(displayIDs, ", "),
 		))
 		if failedChannels > displayCount {
-			builder.WriteString(fmt.Sprintf("（其余 %d 个已省略）", failedChannels-displayCount))
+			builder.WriteString(fmt.Sprintf("(Đã bỏ qua %d còn lại)", failedChannels-displayCount))
 		}
 	}
 	return builder.String()
@@ -633,7 +633,7 @@ func runChannelUpstreamModelUpdateTaskOnce() {
 			return
 		}
 		service.NotifyUpstreamModelUpdateWatchers(
-			"上游模型巡检通知",
+			"Thông báo kiểm tra mô hình upstream",
 			buildUpstreamModelUpdateTaskNotificationContent(
 				checkedChannels,
 				changedChannels,

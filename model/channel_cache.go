@@ -120,7 +120,7 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 		if channel, ok := channelsIDM[channels[0]]; ok {
 			return channel, nil
 		}
-		return nil, fmt.Errorf("Lỗi tính nhất quán của cơ sở dữ liệu, kênh #%d không tồn tại, vui lòng liên hệ quản trị viên để sửa chữa", channels[0])
+		return nil, fmt.Errorf("Lỗi nhất quán dữ liệu, kênh #%d không tồn tại, vui lòng liên hệ quản trị viên", channels[0])
 	}
 
 	uniquePriorities := make(map[int]bool)
@@ -128,7 +128,7 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 		if channel, ok := channelsIDM[channelId]; ok {
 			uniquePriorities[int(channel.GetPriority())] = true
 		} else {
-			return nil, fmt.Errorf("Lỗi tính nhất quán của cơ sở dữ liệu, kênh #%d không tồn tại, vui lòng liên hệ quản trị viên để sửa chữa", channelId)
+			return nil, fmt.Errorf("Lỗi nhất quán dữ liệu, kênh #%d không tồn tại, vui lòng liên hệ quản trị viên", channelId)
 		}
 	}
 	var sortedUniquePriorities []int
@@ -152,7 +152,7 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 				targetChannels = append(targetChannels, channel)
 			}
 		} else {
-			return nil, fmt.Errorf("Lỗi tính nhất quán của cơ sở dữ liệu, kênh #%d không tồn tại, vui lòng liên hệ quản trị viên để sửa chữa", channelId)
+			return nil, fmt.Errorf("Lỗi nhất quán dữ liệu, kênh #%d không tồn tại, vui lòng liên hệ quản trị viên", channelId)
 		}
 	}
 

@@ -64,7 +64,7 @@ func ClaudeErrorWrapper(err error, code string, statusCode int) *dto.ClaudeError
 	if !strings.HasPrefix(lowerText, "get file base64 from url") {
 		if strings.Contains(lowerText, "post") || strings.Contains(lowerText, "dial") || strings.Contains(lowerText, "http") {
 			common.SysLog(fmt.Sprintf("error: %s", text))
-			text = "Yêu cầu địa chỉ thượng nguồn thất bại"
+			text = "Kết nối đến upstream thất bại"
 		}
 	}
 	claudeError := types.ClaudeError{

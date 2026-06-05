@@ -430,7 +430,7 @@ func RelayMidjourney(c *gin.Context) {
 	if mjErr != nil {
 		statusCode := http.StatusBadRequest
 		if mjErr.Code == 30 {
-			mjErr.Result = "Tải trọng nhóm hiện tại đã bão hòa, vui lòng thử lại sau hoặc nâng cấp tài khoản để cải thiện chất lượng dịch vụ."
+			mjErr.Result = "Nhóm hiện tại đã quá tải, vui lòng thử lại sau hoặc nâng cấp tài khoản để cải thiện chất lượng dịch vụ."
 			statusCode = http.StatusTooManyRequests
 		}
 		c.JSON(statusCode, gin.H{
@@ -605,7 +605,7 @@ func RelayTask(c *gin.Context) {
 // respondTaskError 统一输出 Task 错误响应（含 429 限流提示改写）
 func respondTaskError(c *gin.Context, taskErr *dto.TaskError) {
 	if taskErr.StatusCode == http.StatusTooManyRequests {
-		taskErr.Message = "Tải trọng thượng nguồn của nhóm hiện tại đã bão hòa, vui lòng thử lại sau"
+		taskErr.Message = "Upstream của nhóm hiện tại đã quá tải, vui lòng thử lại sau"
 	}
 	c.JSON(taskErr.StatusCode, taskErr)
 }

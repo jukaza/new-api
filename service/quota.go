@@ -218,7 +218,7 @@ func PostWssConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, mod
 		// in this case, must be some error happened
 		// we cannot just return, because we may have to return the pre-consumed quota
 		quota = 0
-		logContent += " (có thể do thượng nguồn quá thời gian)"
+		logContent += " (có thể do upstream đã timeout)"
 		logger.LogError(ctx, fmt.Sprintf("total tokens is 0, cannot consume quota, userId %d, channelId %d, "+
 			"tokenId %d, model %s， pre-consumed quota %d", relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, modelName, relayInfo.FinalPreConsumedQuota))
 	} else {
@@ -339,7 +339,7 @@ func PostAudioConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, u
 		// in this case, must be some error happened
 		// we cannot just return, because we may have to return the pre-consumed quota
 		quota = 0
-		logContent += " (có thể do thượng nguồn quá thời gian)"
+		logContent += " (có thể do upstream đã timeout)"
 		logger.LogError(ctx, fmt.Sprintf("total tokens is 0, cannot consume quota, userId %d, channelId %d, "+
 			"tokenId %d, model %s， pre-consumed quota %d", relayInfo.UserId, relayInfo.ChannelId, relayInfo.TokenId, relayInfo.OriginModelName, relayInfo.FinalPreConsumedQuota))
 	} else {
@@ -478,14 +478,14 @@ func checkAndSendQuotaNotify(relayInfo *relaycommon.RelayInfo, quota int, preCon
 
 			if notifyType == dto.NotifyTypeBark {
 				// Bark推送使用简短文本，不支持HTML
-				content = "{{value}}, hạn ngạch còn lại: {{value}}, vui lòng nạp tiền kịp thời"
+				content = "{{value}}, hạn ngạch còn lại: {{value}}, vui lòng nạp thêm tiền"
 				values = []interface{}{prompt, logger.FormatQuota(relayInfo.UserQuota)}
 			} else if notifyType == dto.NotifyTypeGotify {
-				content = "{{value}}, hạn ngạch còn lại hiện tại là {{value}}, vui lòng nạp tiền kịp thời."
+				content = "{{value}}, hạn ngạch còn lại hiện tại là {{value}}, vui lòng nạp thêm tiền."
 				values = []interface{}{prompt, logger.FormatQuota(relayInfo.UserQuota)}
 			} else {
 				// 默认内容格式，适用于Email和Webhook（支持HTML）
-				content = "{{value}}, hạn ngạch còn lại hiện tại là {{value}}, để không ảnh hưởng đến việc sử dụng, vui lòng nạp tiền kịp thời.<br/>Đường dẫn nạp tiền: <a href='{{value}}'>{{value}}</a>"
+				content = "{{value}}, hạn ngạch còn lại hiện tại là {{value}}, để không ảnh hưởng đến việc sử dụng, vui lòng nạp thêm tiền.<br/>Đường dẫn nạp tiền: <a href='{{value}}'>{{value}}</a>"
 				values = []interface{}{prompt, logger.FormatQuota(relayInfo.UserQuota), topUpLink, topUpLink}
 			}
 
@@ -529,13 +529,13 @@ func checkAndSendSubscriptionQuotaNotify(relayInfo *relaycommon.RelayInfo) {
 		}
 
 		if notifyType == dto.NotifyTypeBark {
-			content = "{{value}}, hạn ngạch còn lại: {{value}}, vui lòng nạp tiền kịp thời"
+			content = "{{value}}, hạn ngạch còn lại: {{value}}, vui lòng nạp thêm tiền"
 			values = []interface{}{prompt, logger.FormatQuota(int(remaining))}
 		} else if notifyType == dto.NotifyTypeGotify {
-			content = "{{value}}, hạn ngạch còn lại hiện tại là {{value}}, vui lòng nạp tiền kịp thời."
+			content = "{{value}}, hạn ngạch còn lại hiện tại là {{value}}, vui lòng nạp thêm tiền."
 			values = []interface{}{prompt, logger.FormatQuota(int(remaining))}
 		} else {
-			content = "{{value}}, hạn ngạch còn lại hiện tại là {{value}}, để không ảnh hưởng đến việc sử dụng, vui lòng nạp tiền kịp thời.<br/>Đường dẫn nạp tiền: <a href='{{value}}'>{{value}}</a>"
+			content = "{{value}}, hạn ngạch còn lại hiện tại là {{value}}, để không ảnh hưởng đến việc sử dụng, vui lòng nạp thêm tiền.<br/>Đường dẫn nạp tiền: <a href='{{value}}'>{{value}}</a>"
 			values = []interface{}{prompt, logger.FormatQuota(int(remaining)), topUpLink, topUpLink}
 		}
 

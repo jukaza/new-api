@@ -19,12 +19,15 @@ type ThemeAssets struct {
 	DefaultIndexPage []byte
 	ClassicBuildFS   embed.FS
 	ClassicIndexPage []byte
+	CommerceBuildFS   embed.FS
+	CommerceIndexPage []byte
 }
 
 func SetWebRouter(router *gin.Engine, assets ThemeAssets) {
 	defaultFS := common.EmbedFolder(assets.DefaultBuildFS, "web/default/dist")
 	classicFS := common.EmbedFolder(assets.ClassicBuildFS, "web/classic/dist")
-	themeFS := common.NewThemeAwareFS(defaultFS, classicFS)
+	commerceFS := common.EmbedFolder(assets.CommerceBuildFS, "web/commerce/dist")
+	themeFS := common.NewThemeAwareFS(defaultFS, classicFS, commerceFS)
 
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(middleware.GlobalWebRateLimit())
@@ -39,6 +42,8 @@ func SetWebRouter(router *gin.Engine, assets ThemeAssets) {
 		c.Header("Cache-Control", "no-cache")
 		if common.GetTheme() == "classic" {
 			c.Data(http.StatusOK, "text/html; charset=utf-8", assets.ClassicIndexPage)
+		} else if common.GetTheme() == "commerce" {
+			c.Data(http.StatusOK, "text/html; charset=utf-8", assets.CommerceIndexPage)
 		} else {
 			c.Data(http.StatusOK, "text/html; charset=utf-8", assets.DefaultIndexPage)
 		}

@@ -1,8 +1,10 @@
 FRONTEND_DIR = ./web/default
 FRONTEND_CLASSIC_DIR = ./web/classic
+FRONTEND_COMMERCE_DIR = ./web/commerce
 BACKEND_DIR = .
 DEV_FRONTEND_DEFAULT_PORT ?= 5173
 DEV_FRONTEND_CLASSIC_PORT ?= 5174
+DEV_FRONTEND_COMMERCE_PORT ?= 5175
 DEV_COMPOSE_FILE = docker-compose.dev.yml
 DEV_POSTGRES_SERVICE = postgres
 DEV_BACKEND_SERVICE = new-api
@@ -10,7 +12,7 @@ DEV_POSTGRES_DB = new-api
 DEV_POSTGRES_USER = root
 DEV_SQLITE_PATH ?= one-api.db
 
-.PHONY: all build-frontend build-frontend-classic build-all-frontends start-backend dev dev-api dev-api-rebuild dev-web dev-web-classic reset-setup
+.PHONY: all build-frontend build-frontend-classic build-frontend-commerce build-all-frontends start-backend dev dev-api dev-api-rebuild dev-web dev-web-classic dev-web-commerce reset-setup
 
 all: build-all-frontends start-backend
 
@@ -24,7 +26,12 @@ build-frontend-classic:
 	@cd ./web && bun install --frozen-lockfile
 	@cd $(FRONTEND_CLASSIC_DIR) && VITE_REACT_APP_VERSION=$(cat ../../VERSION) bun run build
 
-build-all-frontends: build-frontend build-frontend-classic
+build-frontend-commerce:
+	@echo "Building commerce frontend..."
+	@cd ./web && bun install --frozen-lockfile
+	@cd $(FRONTEND_COMMERCE_DIR) && VITE_REACT_APP_VERSION=$(cat ../../VERSION) bun run build
+
+build-all-frontends: build-frontend build-frontend-classic build-frontend-commerce
 
 start-backend:
 	@echo "Starting backend dev server..."
@@ -42,6 +49,7 @@ dev-web:
 	@echo "Starting both frontend dev servers..."
 	@echo "Default frontend: http://localhost:$(DEV_FRONTEND_DEFAULT_PORT)"
 	@echo "Classic frontend: http://localhost:$(DEV_FRONTEND_CLASSIC_PORT)"
+	@echo "Commerce frontend: http://localhost:$(DEV_FRONTEND_COMMERCE_PORT)"
 	@cd ./web && bun install
 	@(cd $(FRONTEND_DIR) && bun run dev -- --host 0.0.0.0 --port $(DEV_FRONTEND_DEFAULT_PORT)) & \
 		default_pid=$$!; \
@@ -68,6 +76,11 @@ dev-web-classic:
 	@echo "Starting classic frontend dev server..."
 	@cd ./web && bun install
 	@cd $(FRONTEND_CLASSIC_DIR) && bun run dev -- --host 0.0.0.0 --port $(DEV_FRONTEND_CLASSIC_PORT)
+
+dev-web-commerce:
+	@echo "Starting commerce frontend dev server..."
+	@cd ./web && bun install
+	@cd $(FRONTEND_COMMERCE_DIR) && bun run dev -- --host 0.0.0.0 --port $(DEV_FRONTEND_COMMERCE_PORT)
 
 dev: dev-api dev-web
 

@@ -1,0 +1,9 @@
+{
+  "name": "new-api-commerce",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "echo 'Commerce frontend placeholder build'"
+  }
+}

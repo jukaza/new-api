@@ -47,6 +47,12 @@ var classicBuildFS embed.FS
 //go:embed web/classic/dist/index.html
 var classicIndexPage []byte
 
+//go:embed web/commerce/dist
+var commerceBuildFS embed.FS
+
+//go:embed web/commerce/dist/index.html
+var commerceIndexPage []byte
+
 func main() {
 	startTime := time.Now()
 
@@ -195,6 +201,8 @@ func main() {
 		DefaultIndexPage: indexPage,
 		ClassicBuildFS:   classicBuildFS,
 		ClassicIndexPage: classicIndexPage,
+		CommerceBuildFS:   commerceBuildFS,
+		CommerceIndexPage: commerceIndexPage,
 	})
 	var port = os.Getenv("PORT")
 	if port == "" {
@@ -229,6 +237,7 @@ func InjectUmamiAnalytics() {
 	placeholder := []byte("<!--umami-->\n")
 	indexPage = bytes.ReplaceAll(indexPage, placeholder, analyticsInject)
 	classicIndexPage = bytes.ReplaceAll(classicIndexPage, placeholder, analyticsInject)
+	commerceIndexPage = bytes.ReplaceAll(commerceIndexPage, placeholder, analyticsInject)
 }
 
 func InjectGoogleAnalytics() {
@@ -253,6 +262,7 @@ func InjectGoogleAnalytics() {
 	placeholder := []byte("<!--Google Analytics-->\n")
 	indexPage = bytes.ReplaceAll(indexPage, placeholder, analyticsInject)
 	classicIndexPage = bytes.ReplaceAll(classicIndexPage, placeholder, analyticsInject)
+	commerceIndexPage = bytes.ReplaceAll(commerceIndexPage, placeholder, analyticsInject)
 }
 
 func InitResources() error {

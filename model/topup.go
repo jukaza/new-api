@@ -81,7 +81,7 @@ func GetTopUpByTradeNo(tradeNo string) *TopUp {
 
 func UpdatePendingTopUpStatus(tradeNo string, expectedPaymentProvider string, targetStatus string) error {
 	if tradeNo == "" {
-		return errors.New("未提供支付单号")
+		return errors.New("Không cung cấp mã giao dịch thanh toán")
 	}
 
 	refCol := "`trade_no`"
@@ -108,7 +108,7 @@ func UpdatePendingTopUpStatus(tradeNo string, expectedPaymentProvider string, ta
 
 func Recharge(referenceId string, customerId string, callerIp string) (err error) {
 	if referenceId == "" {
-		return errors.New("未提供支付单号")
+		return errors.New("Không cung cấp mã giao dịch thanh toán")
 	}
 
 	var quota float64
@@ -122,7 +122,7 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", referenceId).First(topUp).Error
 		if err != nil {
-			return errors.New("充值订单不存在")
+			return errors.New("Đơn hàng nạp tiền không tồn tại")
 		}
 
 		if topUp.PaymentProvider != PaymentProviderStripe {
@@ -130,7 +130,7 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 		}
 
 		if topUp.Status != common.TopUpStatusPending {
-			return errors.New("充值订单状态错误")
+			return errors.New("Trạng thái đơn hàng nạp tiền không hợp lệ")
 		}
 
 		topUp.CompleteTime = common.GetTimestamp()
@@ -151,10 +151,10 @@ func Recharge(referenceId string, customerId string, callerIp string) (err error
 
 	if err != nil {
 		common.SysError("topup failed: " + err.Error())
-		return errors.New("充值失败，请稍后重试")
+		return errors.New("Nạp tiền thất bại, vui lòng thử lại sau")
 	}
 
-	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用在线充值成功，充值金额: %v，支付金额：%d", logger.FormatQuota(int(quota)), topUp.Amount), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
+	RecordTopupLog(topUp.UserId, fmt.Sprintf("Nạp tiền trực tuyến thành công, hạn ngạch nhận được: %v, số tiền thanh toán: %d", logger.FormatQuota(int(quota)), topUp.Amount), callerIp, topUp.PaymentMethod, PaymentMethodStripe)
 
 	return nil
 }
@@ -261,13 +261,13 @@ func SearchUserTopUps(userId int, keyword string, pageInfo *common.PageInfo) (to
 	if err = query.Limit(searchTopUpCountHardLimit).Count(&total).Error; err != nil {
 		tx.Rollback()
 		common.SysError("failed to count search topups: " + err.Error())
-		return nil, 0, errors.New("搜索充值记录失败")
+		return nil, 0, errors.New("Tìm kiếm lịch sử nạp tiền thất bại")
 	}
 
 	if err = query.Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
 		tx.Rollback()
 		common.SysError("failed to search topups: " + err.Error())
-		return nil, 0, errors.New("搜索充值记录失败")
+		return nil, 0, errors.New("Tìm kiếm lịch sử nạp tiền thất bại")
 	}
 
 	if err = tx.Commit().Error; err != nil {
@@ -301,13 +301,13 @@ func SearchAllTopUps(keyword string, pageInfo *common.PageInfo) (topups []*TopUp
 	if err = query.Limit(searchTopUpCountHardLimit).Count(&total).Error; err != nil {
 		tx.Rollback()
 		common.SysError("failed to count search topups: " + err.Error())
-		return nil, 0, errors.New("搜索充值记录失败")
+		return nil, 0, errors.New("Tìm kiếm lịch sử nạp tiền thất bại")
 	}
 
 	if err = query.Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
 		tx.Rollback()
 		common.SysError("failed to search topups: " + err.Error())
-		return nil, 0, errors.New("搜索充值记录失败")
+		return nil, 0, errors.New("Tìm kiếm lịch sử nạp tiền thất bại")
 	}
 
 	if err = tx.Commit().Error; err != nil {
@@ -319,7 +319,7 @@ func SearchAllTopUps(keyword string, pageInfo *common.PageInfo) (topups []*TopUp
 // ManualCompleteTopUp 管理员手动完成订单并给用户充值
 func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 	if tradeNo == "" {
-		return errors.New("未提供订单号")
+		return errors.New("Không cung cấp mã đơn hàng")
 	}
 
 	refCol := "`trade_no`"
@@ -336,7 +336,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		topUp := &TopUp{}
 		// 行级锁，避免并发补单
 		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
-			return errors.New("充值订单不存在")
+			return errors.New("Đơn hàng nạp tiền không tồn tại")
 		}
 
 		// 幂等处理：已成功直接返回
@@ -345,7 +345,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		}
 
 		if topUp.Status != common.TopUpStatusPending {
-			return errors.New("订单状态不是待支付，无法补单")
+			return errors.New("Trạng thái đơn hàng không phải là đang chờ thanh toán, không thể bổ sung đơn")
 		}
 
 		// 计算应充值额度：
@@ -360,7 +360,7 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
 		}
 		if quotaToAdd <= 0 {
-			return errors.New("无效的充值额度")
+			return errors.New("Hạn ngạch nạp tiền không hợp lệ")
 		}
 
 		// 标记完成
@@ -386,12 +386,12 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 	}
 
 	// 事务外记录日志，避免阻塞
-	RecordTopupLog(userId, fmt.Sprintf("管理员补单成功，充值金额: %v，支付金额：%f", logger.FormatQuota(quotaToAdd), payMoney), callerIp, paymentMethod, "admin")
+	RecordTopupLog(userId, fmt.Sprintf("Quản trị viên bổ sung đơn thành công, hạn ngạch nhận được: %v, số tiền thanh toán: %f", logger.FormatQuota(quotaToAdd), payMoney), callerIp, paymentMethod, "admin")
 	return nil
 }
 func RechargeCreem(referenceId string, customerEmail string, customerName string, callerIp string) (err error) {
 	if referenceId == "" {
-		return errors.New("未提供支付单号")
+		return errors.New("Không cung cấp mã giao dịch thanh toán")
 	}
 
 	var quota int64
@@ -405,7 +405,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", referenceId).First(topUp).Error
 		if err != nil {
-			return errors.New("充值订单不存在")
+			return errors.New("Đơn hàng nạp tiền không tồn tại")
 		}
 
 		if topUp.PaymentProvider != PaymentProviderCreem {
@@ -413,7 +413,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 		}
 
 		if topUp.Status != common.TopUpStatusPending {
-			return errors.New("充值订单状态错误")
+			return errors.New("Trạng thái đơn hàng nạp tiền không hợp lệ")
 		}
 
 		topUp.CompleteTime = common.GetTimestamp()
@@ -426,12 +426,12 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 		// Creem 直接使用 Amount 作为充值额度（整数）
 		quota = topUp.Amount
 
-		// 构建更新字段，优先使用邮箱，如果邮箱为空则使用用户名
+		// 构建更新字段，优先 sử dụng email, nếu email trống thì sử dụng username
 		updateFields := map[string]interface{}{
 			"quota": gorm.Expr("quota + ?", quota),
 		}
 
-		// 如果有客户邮箱，尝试更新用户邮箱（仅当用户邮箱为空时）
+		// Nếu có email khách hàng, thử cập nhật email người dùng (chỉ khi email người dùng trống)
 		if customerEmail != "" {
 			// 先检查用户当前邮箱是否为空
 			var user User
@@ -440,7 +440,7 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 				return err
 			}
 
-			// 如果用户邮箱为空，则更新为支付时使用的邮箱
+			// Nếu email người dùng trống, cập nhật thành email sử dụng khi thanh toán
 			if user.Email == "" {
 				updateFields["email"] = customerEmail
 			}
@@ -456,17 +456,17 @@ func RechargeCreem(referenceId string, customerEmail string, customerName string
 
 	if err != nil {
 		common.SysError("creem topup failed: " + err.Error())
-		return errors.New("充值失败，请稍后重试")
+		return errors.New("Nạp tiền thất bại, vui lòng thử lại sau")
 	}
 
-	RecordTopupLog(topUp.UserId, fmt.Sprintf("使用Creem充值成功，充值额度: %v，支付金额：%.2f", quota, topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodCreem)
+	RecordTopupLog(topUp.UserId, fmt.Sprintf("Nạp tiền qua Creem thành công, hạn ngạch nhận được: %v, số tiền thanh toán: %.2f", quota, topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodCreem)
 
 	return nil
 }
 
 func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 	if tradeNo == "" {
-		return errors.New("未提供支付单号")
+		return errors.New("Không cung cấp mã giao dịch thanh toán")
 	}
 
 	var quotaToAdd int
@@ -480,7 +480,7 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error
 		if err != nil {
-			return errors.New("充值订单不存在")
+			return errors.New("Đơn hàng nạp tiền không tồn tại")
 		}
 
 		if topUp.PaymentProvider != PaymentProviderWaffo {
@@ -492,14 +492,14 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 		}
 
 		if topUp.Status != common.TopUpStatusPending {
-			return errors.New("充值订单状态错误")
+			return errors.New("Trạng thái đơn hàng nạp tiền không hợp lệ")
 		}
 
 		dAmount := decimal.NewFromInt(topUp.Amount)
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 		quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
 		if quotaToAdd <= 0 {
-			return errors.New("无效的充值额度")
+			return errors.New("Hạn ngạch nạp tiền không hợp lệ")
 		}
 
 		topUp.CompleteTime = common.GetTimestamp()
@@ -517,11 +517,11 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 
 	if err != nil {
 		common.SysError("waffo topup failed: " + err.Error())
-		return errors.New("充值失败，请稍后重试")
+		return errors.New("Nạp tiền thất bại, vui lòng thử lại sau")
 	}
 
 	if quotaToAdd > 0 {
-		RecordTopupLog(topUp.UserId, fmt.Sprintf("Waffo充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodWaffo)
+		RecordTopupLog(topUp.UserId, fmt.Sprintf("Nạp tiền qua Waffo thành công, hạn ngạch nhận được: %v, số tiền thanh toán: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentMethodWaffo)
 	}
 
 	return nil
@@ -529,7 +529,7 @@ func RechargeWaffo(tradeNo string, callerIp string) (err error) {
 
 func RechargeWaffoPancake(tradeNo string) (err error) {
 	if tradeNo == "" {
-		return errors.New("未提供支付单号")
+		return errors.New("Không cung cấp mã giao dịch thanh toán")
 	}
 
 	var quotaToAdd int
@@ -543,7 +543,7 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error
 		if err != nil {
-			return errors.New("充值订单不存在")
+			return errors.New("Đơn hàng nạp tiền không tồn tại")
 		}
 
 		if topUp.PaymentProvider != PaymentProviderWaffoPancake {
@@ -555,12 +555,12 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 		}
 
 		if topUp.Status != common.TopUpStatusPending {
-			return errors.New("充值订单状态错误")
+			return errors.New("Trạng thái đơn hàng nạp tiền không hợp lệ")
 		}
 
 		quotaToAdd = int(decimal.NewFromInt(topUp.Amount).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
 		if quotaToAdd <= 0 {
-			return errors.New("无效的充值额度")
+			return errors.New("Hạn ngạch nạp tiền không hợp lệ")
 		}
 
 		topUp.CompleteTime = common.GetTimestamp()
@@ -578,11 +578,11 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 
 	if err != nil {
 		common.SysError("waffo pancake topup failed: " + err.Error())
-		return errors.New("充值失败，请稍后重试")
+		return errors.New("Nạp tiền thất bại, vui lòng thử lại sau")
 	}
 
 	if quotaToAdd > 0 {
-		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Waffo Pancake充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money))
+		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Nạp tiền qua Waffo Pancake thành công, hạn ngạch nhận được: %v, số tiền thanh toán: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money))
 	}
 
 	return nil

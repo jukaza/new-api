@@ -26,7 +26,7 @@ func SecureVerificationRequired() gin.HandlerFunc {
 		if userId == 0 {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"success": false,
-				"message": "未登录",
+				"message": "Chưa đăng nhập",
 			})
 			c.Abort()
 			return
@@ -39,7 +39,7 @@ func SecureVerificationRequired() gin.HandlerFunc {
 		if verifiedAtRaw == nil {
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"message": "需要安全验证",
+				"message": "Yêu cầu xác thực an toàn",
 				"code":    "VERIFICATION_REQUIRED",
 			})
 			c.Abort()
@@ -52,7 +52,7 @@ func SecureVerificationRequired() gin.HandlerFunc {
 			clearSecureVerificationSession(session)
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"message": "验证状态异常，请重新验证",
+				"message": "Trạng thái xác thực không hợp lệ, vui lòng xác thực lại",
 				"code":    "VERIFICATION_INVALID",
 			})
 			c.Abort()
@@ -66,7 +66,7 @@ func SecureVerificationRequired() gin.HandlerFunc {
 			clearSecureVerificationSession(session)
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"message": "验证已过期，请重新验证",
+				"message": "Xác thực đã hết hạn, vui lòng xác thực lại",
 				"code":    "VERIFICATION_EXPIRED",
 			})
 			c.Abort()

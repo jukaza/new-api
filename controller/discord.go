@@ -35,7 +35,7 @@ type DiscordUser struct {
 
 func getDiscordUserInfoByCode(code string) (*DiscordUser, error) {
 	if code == "" {
-		return nil, errors.New("无效的参数")
+		return nil, errors.New("Tham số không hợp lệ")
 	}
 
 	values := url.Values{}
@@ -57,7 +57,7 @@ func getDiscordUserInfoByCode(code string) (*DiscordUser, error) {
 	res, err := client.Do(req)
 	if err != nil {
 		common.SysLog(err.Error())
-		return nil, errors.New("无法连接至 Discord 服务器，请稍后重试！")
+		return nil, errors.New("Không thể kết nối đến máy chủ Discord, vui lòng thử lại sau!")
 	}
 	defer res.Body.Close()
 	var discordResponse DiscordResponse
@@ -67,8 +67,8 @@ func getDiscordUserInfoByCode(code string) (*DiscordUser, error) {
 	}
 
 	if discordResponse.AccessToken == "" {
-		common.SysError("Discord 获取 Token 失败，请检查设置！")
-		return nil, errors.New("Discord 获取 Token 失败，请检查设置！")
+		common.SysError("Discord lấy Token thất bại, vui lòng kiểm tra thiết lập!")
+		return nil, errors.New("Discord lấy Token thất bại, vui lòng kiểm tra thiết lập!")
 	}
 
 	req, err = http.NewRequest("GET", "https://discord.com/api/v10/users/@me", nil)
@@ -79,12 +79,12 @@ func getDiscordUserInfoByCode(code string) (*DiscordUser, error) {
 	res2, err := client.Do(req)
 	if err != nil {
 		common.SysLog(err.Error())
-		return nil, errors.New("无法连接至 Discord 服务器，请稍后重试！")
+		return nil, errors.New("Không thể kết nối đến máy chủ Discord, vui lòng thử lại sau!")
 	}
 	defer res2.Body.Close()
 	if res2.StatusCode != http.StatusOK {
-		common.SysError("Discord 获取用户信息失败！请检查设置！")
-		return nil, errors.New("Discord 获取用户信息失败！请检查设置！")
+		common.SysError("Discord lấy thông tin người dùng thất bại! Vui lòng kiểm tra thiết lập!")
+		return nil, errors.New("Discord lấy thông tin người dùng thất bại! Vui lòng kiểm tra thiết lập!")
 	}
 
 	var discordUser DiscordUser
@@ -93,8 +93,8 @@ func getDiscordUserInfoByCode(code string) (*DiscordUser, error) {
 		return nil, err
 	}
 	if discordUser.UID == "" || discordUser.ID == "" {
-		common.SysError("Discord 获取用户信息为空！请检查设置！")
-		return nil, errors.New("Discord 获取用户信息为空！请检查设置！")
+		common.SysError("Thông tin người dùng Discord lấy về bị trống! Vui lòng kiểm tra thiết lập!")
+		return nil, errors.New("Thông tin người dùng Discord lấy về bị trống! Vui lòng kiểm tra thiết lập!")
 	}
 	return &discordUser, nil
 }
@@ -117,7 +117,7 @@ func DiscordOAuth(c *gin.Context) {
 	if !system_setting.GetDiscordSettings().Enabled {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "管理员未开启通过 Discord 登录以及注册",
+			"message": "Quản trị viên chưa bật tính năng đăng nhập và đăng ký qua Discord",
 		})
 		return
 	}
@@ -162,7 +162,7 @@ func DiscordOAuth(c *gin.Context) {
 		} else {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "管理员关闭了新用户注册",
+				"message": "Quản trị viên đã tắt tính năng đăng ký người dùng mới",
 			})
 			return
 		}
@@ -170,7 +170,7 @@ func DiscordOAuth(c *gin.Context) {
 
 	if user.Status != common.UserStatusEnabled {
 		c.JSON(http.StatusOK, gin.H{
-			"message": "用户已被封禁",
+			"message": "Người dùng đã bị khóa tài khoản",
 			"success": false,
 		})
 		return
@@ -182,7 +182,7 @@ func DiscordBind(c *gin.Context) {
 	if !system_setting.GetDiscordSettings().Enabled {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "管理员未开启通过 Discord 登录以及注册",
+			"message": "Quản trị viên chưa bật tính năng đăng nhập và đăng ký qua Discord",
 		})
 		return
 	}
@@ -198,7 +198,7 @@ func DiscordBind(c *gin.Context) {
 	if model.IsDiscordIdAlreadyTaken(user.DiscordId) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": "该 Discord 账户已被绑定",
+			"message": "Tài khoản Discord này đã được liên kết",
 		})
 		return
 	}

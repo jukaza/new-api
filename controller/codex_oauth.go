@@ -133,7 +133,7 @@ func completeCodexOAuthWithChannelID(c *gin.Context, channelID int) {
 	code, state, err := parseCodexAuthorizationInput(req.Input)
 	if err != nil {
 		common.SysError("failed to parse codex authorization input: " + err.Error())
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "解析授权信息失败，请检查输入格式"})
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Phân tích thông tin ủy quyền thất bại, vui lòng kiểm tra định dạng đầu vào"})
 		return
 	}
 	if strings.TrimSpace(code) == "" {
@@ -181,7 +181,7 @@ func completeCodexOAuthWithChannelID(c *gin.Context, channelID int) {
 	tokenRes, err := service.ExchangeCodexAuthorizationCodeWithProxy(ctx, code, verifier, channelProxy)
 	if err != nil {
 		common.SysError("failed to exchange codex authorization code: " + err.Error())
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "授权码交换失败，请重试"})
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Đổi mã ủy quyền thất bại, vui lòng thử lại"})
 		return
 	}
 

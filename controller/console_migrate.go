@@ -18,7 +18,7 @@ func MigrateConsoleSetting(c *gin.Context) {
 	opts, err := model.AllOption()
 	if err != nil {
 		common.SysError("failed to get all options: " + err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "获取配置失败，请稍后重试"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "Lấy cấu hình thất bại, vui lòng thử lại sau"})
 		return
 	}
 	// 建立 map

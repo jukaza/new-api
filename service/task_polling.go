@@ -49,8 +49,8 @@ func sweepTimedOutTasks(ctx context.Context) {
 	}
 
 	const legacyTaskCutoff int64 = 1740182400 // 2026-02-22 00:00:00 UTC
-	reason := fmt.Sprintf("任务超时（%d分钟）", constant.TaskTimeoutMinutes)
-	legacyReason := "任务超时（旧系统遗留任务，不进行退款，请联系管理员）"
+	reason := fmt.Sprintf("Nhiệm vụ quá thời gian (%d phút)", constant.TaskTimeoutMinutes)
+	legacyReason := "Nhiệm vụ quá thời gian (Nhiệm vụ cũ còn sót lại từ hệ thống trước, không hỗ trợ hoàn tiền, vui lòng liên hệ quản trị viên)"
 	now := time.Now().Unix()
 	timedOutCount := 0
 
@@ -91,7 +91,7 @@ func sweepTimedOutTasks(ctx context.Context) {
 func TaskPollingLoop() {
 	for {
 		time.Sleep(time.Duration(15) * time.Second)
-		common.SysLog("任务进度轮询开始")
+		common.SysLog("Bắt đầu vòng quét tiến độ nhiệm vụ")
 		ctx := context.TODO()
 		sweepTimedOutTasks(ctx)
 		allTasks := model.GetAllUnFinishSyncTasks(constant.TaskQueryLimit)
@@ -109,7 +109,7 @@ func TaskPollingLoop() {
 			for _, task := range tasks {
 				upstreamID := task.GetUpstreamTaskID()
 				if upstreamID == "" {
-					// 统计失败的未完成任务
+					// 统计失败 of unfinished tasks
 					nullTaskIds = append(nullTaskIds, task.ID)
 					continue
 				}
@@ -133,7 +133,7 @@ func TaskPollingLoop() {
 
 			DispatchPlatformUpdate(platform, taskChannelM, taskM)
 		}
-		common.SysLog("任务进度轮询完成")
+		common.SysLog("Hoàn thành vòng quét tiến độ nhiệm vụ")
 	}
 }
 
@@ -178,7 +178,7 @@ func updateSunoTasks(ctx context.Context, channelId int, taskIds []string, taskM
 			}
 		}
 		err = model.TaskBulkUpdateByID(failedIDs, map[string]any{
-			"fail_reason": fmt.Sprintf("获取渠道信息失败，请联系管理员，渠道ID：%d", channelId),
+			"fail_reason": fmt.Sprintf("Lấy thông tin kênh thất bại, vui lòng liên hệ quản trị viên. ID kênh: %d", channelId),
 			"status":      "FAILURE",
 			"progress":    "100%",
 		})
@@ -232,7 +232,7 @@ func updateSunoTasks(ctx context.Context, channelId int, taskIds []string, taskM
 		task.StartTime = lo.If(responseItem.StartTime != 0, responseItem.StartTime).Else(task.StartTime)
 		task.FinishTime = lo.If(responseItem.FinishTime != 0, responseItem.FinishTime).Else(task.FinishTime)
 		if responseItem.FailReason != "" || task.Status == model.TaskStatusFailure {
-			logger.LogInfo(ctx, task.TaskID+" 构建失败，"+task.FailReason)
+			logger.LogInfo(ctx, task.TaskID+" tạo thất bại: "+task.FailReason)
 			task.Progress = "100%"
 			RefundTaskQuota(ctx, task, task.FailReason)
 		}
@@ -543,12 +543,12 @@ func truncateBase64(s string) string {
 func settleTaskBillingOnComplete(ctx context.Context, adaptor TaskPollingAdaptor, task *model.Task, taskResult *relaycommon.TaskInfo) {
 	// 0. 按次计费的任务不做差额结算
 	if bc := task.PrivateData.BillingContext; bc != nil && bc.PerCallBilling {
-		logger.LogInfo(ctx, fmt.Sprintf("任务 %s 按次计费，跳过差额结算", task.TaskID))
+		logger.LogInfo(ctx, fmt.Sprintf("Nhiệm vụ %s thanh toán theo lượt, bỏ qua điều chỉnh chênh lệch", task.TaskID))
 		return
 	}
 	// 1. 优先让 adaptor 决定最终额度
 	if actualQuota := adaptor.AdjustBillingOnComplete(task, taskResult); actualQuota > 0 {
-		RecalculateTaskQuota(ctx, task, actualQuota, "adaptor计费调整")
+		RecalculateTaskQuota(ctx, task, actualQuota, "Điều chỉnh thanh toán adaptor")
 		return
 	}
 	// 2. 回退到 token 重算

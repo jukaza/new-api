@@ -213,12 +213,12 @@ func ClearChannelAffinityCacheAll() int {
 func ClearChannelAffinityCacheByRuleName(ruleName string) (int, error) {
 	ruleName = strings.TrimSpace(ruleName)
 	if ruleName == "" {
-		return 0, fmt.Errorf("rule_name 不能为空")
+		return 0, fmt.Errorf("rule_name không được để trống")
 	}
 
 	setting := operation_setting.GetChannelAffinitySetting()
 	if setting == nil {
-		return 0, fmt.Errorf("channel_affinity_setting 未初始化")
+		return 0, fmt.Errorf("channel_affinity_setting chưa được khởi tạo")
 	}
 
 	var matchedRule *operation_setting.ChannelAffinityRule
@@ -231,10 +231,10 @@ func ClearChannelAffinityCacheByRuleName(ruleName string) (int, error) {
 		break
 	}
 	if matchedRule == nil {
-		return 0, fmt.Errorf("未知规则名称")
+		return 0, fmt.Errorf("Tên quy tắc không xác định")
 	}
 	if !matchedRule.IncludeRuleName {
-		return 0, fmt.Errorf("该规则未启用 include_rule_name，无法按规则清空缓存")
+		return 0, fmt.Errorf("Quy tắc này chưa bật include_rule_name, không thể xóa bộ nhớ đệm theo quy tắc")
 	}
 
 	cache := getChannelAffinityCache()

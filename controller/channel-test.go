@@ -902,7 +902,7 @@ func testAllChannels(notify bool) error {
 	testAllChannelsLock.Lock()
 	if testAllChannelsRunning {
 		testAllChannelsLock.Unlock()
-		return errors.New("测试已在运行中")
+		return errors.New("Thử nghiệm đang chạy")
 	}
 	testAllChannelsRunning = true
 	testAllChannelsLock.Unlock()
@@ -942,7 +942,7 @@ func testAllChannels(notify bool) error {
 			// 当错误检查通过，才检查响应时间
 			if common.AutomaticDisableChannelEnabled && !shouldBanChannel {
 				if milliseconds > disableThreshold {
-					err := fmt.Errorf("响应时间 %.2fs 超过阈值 %.2fs", float64(milliseconds)/1000.0, float64(disableThreshold)/1000.0)
+					err := fmt.Errorf("Thời gian phản hồi %.2fs vượt quá ngưỡng %.2fs", float64(milliseconds)/1000.0, float64(disableThreshold)/1000.0)
 					newAPIError = types.NewOpenAIError(err, types.ErrorCodeChannelResponseTimeExceeded, http.StatusRequestTimeout)
 					shouldBanChannel = true
 				}
@@ -963,7 +963,7 @@ func testAllChannels(notify bool) error {
 		}
 
 		if notify {
-			service.NotifyRootUser(dto.NotifyTypeChannelTest, "通道测试完成", "所有通道测试已完成")
+			service.NotifyRootUser(dto.NotifyTypeChannelTest, "Hoàn thành thử nghiệm kênh", "Tất cả thử nghiệm kênh đã hoàn thành")
 		}
 	})
 	return nil

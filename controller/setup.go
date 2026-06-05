@@ -56,7 +56,7 @@ func PostSetup(c *gin.Context) {
 	if constant.Setup {
 		c.JSON(200, gin.H{
 			"success": false,
-			"message": "系统已经初始化完成",
+			"message": "Hệ thống đã hoàn tất khởi tạo",
 		})
 		return
 	}
@@ -69,7 +69,7 @@ func PostSetup(c *gin.Context) {
 	if err != nil {
 		c.JSON(200, gin.H{
 			"success": false,
-			"message": "请求参数有误",
+			"message": "Tham số yêu cầu không chính xác",
 		})
 		return
 	}
@@ -80,7 +80,7 @@ func PostSetup(c *gin.Context) {
 		if len(req.Username) > 12 {
 			c.JSON(200, gin.H{
 				"success": false,
-				"message": "用户名长度不能超过12个字符",
+				"message": "Độ dài tên đăng nhập không được quá 12 ký tự",
 			})
 			return
 		}
@@ -88,7 +88,7 @@ func PostSetup(c *gin.Context) {
 		if req.Password != req.ConfirmPassword {
 			c.JSON(200, gin.H{
 				"success": false,
-				"message": "两次输入的密码不一致",
+				"message": "Mật khẩu nhập lại không khớp",
 			})
 			return
 		}
@@ -96,7 +96,7 @@ func PostSetup(c *gin.Context) {
 		if len(req.Password) < 8 {
 			c.JSON(200, gin.H{
 				"success": false,
-				"message": "密码长度至少为8个字符",
+				"message": "Mật khẩu phải dài ít nhất 8 ký tự",
 			})
 			return
 		}
@@ -106,7 +106,7 @@ func PostSetup(c *gin.Context) {
 		if err != nil {
 			c.JSON(200, gin.H{
 				"success": false,
-				"message": "系统错误: " + err.Error(),
+				"message": "Lỗi hệ thống: " + err.Error(),
 			})
 			return
 		}
@@ -123,7 +123,7 @@ func PostSetup(c *gin.Context) {
 		if err != nil {
 			c.JSON(200, gin.H{
 				"success": false,
-				"message": "创建管理员账号失败: " + err.Error(),
+				"message": "Tạo tài khoản quản trị viên thất bại: " + err.Error(),
 			})
 			return
 		}
@@ -138,7 +138,7 @@ func PostSetup(c *gin.Context) {
 	if err != nil {
 		c.JSON(200, gin.H{
 			"success": false,
-			"message": "保存自用模式设置失败: " + err.Error(),
+			"message": "Lưu thiết lập chế độ tự dùng thất bại: " + err.Error(),
 		})
 		return
 	}
@@ -147,7 +147,7 @@ func PostSetup(c *gin.Context) {
 	if err != nil {
 		c.JSON(200, gin.H{
 			"success": false,
-			"message": "保存演示站点模式设置失败: " + err.Error(),
+			"message": "Lưu thiết lập chế độ trang web demo thất bại: " + err.Error(),
 		})
 		return
 	}
@@ -163,14 +163,14 @@ func PostSetup(c *gin.Context) {
 	if err != nil {
 		c.JSON(200, gin.H{
 			"success": false,
-			"message": "系统初始化失败: " + err.Error(),
+			"message": "Khởi tạo hệ thống thất bại: " + err.Error(),
 		})
 		return
 	}
 
 	c.JSON(200, gin.H{
 		"success": true,
-		"message": "系统初始化成功",
+		"message": "Khởi tạo hệ thống thành công",
 	})
 }
 

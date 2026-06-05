@@ -383,6 +383,12 @@ func updateOptionMap(key string, value string) (err error) {
 	case "PayAddress":
 		operation_setting.PayAddress = value
 	case "Chats":
+		if strings.Contains(value, "官方") || strings.Contains(value, "流畅") || strings.Contains(value, "问天") {
+			go func() {
+				_ = UpdateOption("Chats", setting.Chats2JsonString())
+			}()
+			return nil
+		}
 		err = setting.UpdateChatsByJsonString(value)
 	case "AutoGroups":
 		err = setting.UpdateAutoGroupsByJsonString(value)

@@ -100,20 +100,20 @@ func sanitizeLikePattern(input string) (string, error) {
 
 	// 2. 连续的 % 直接拒绝
 	if strings.Contains(input, "%%") {
-		return "", errors.New("搜索模式中不允许包含连续的 % 通配符")
+		return "", errors.New("Không cho phép chứa các ký tự đại diện % liên tiếp trong mẫu tìm kiếm")
 	}
 
 	// 3. 统计 % 数量，不得超过 2
 	count := strings.Count(input, "%")
 	if count > 2 {
-		return "", errors.New("搜索模式中最多允许包含 2 个 % 通配符")
+		return "", errors.New("Chỉ cho phép tối đa 2 ký tự đại diện % trong mẫu tìm kiếm")
 	}
 
 	// 4. 含 % 时，去掉 % 后关键词长度必须 >= 2
 	if count > 0 {
 		stripped := strings.ReplaceAll(input, "%", "")
 		if len(stripped) < 2 {
-			return "", errors.New("使用模糊搜索时，关键词长度至少为 2 个字符")
+			return "", errors.New("Khi sử dụng tìm kiếm mờ, độ dài từ khóa phải có ít nhất 2 ký tự")
 		}
 		return input, nil
 	}
@@ -144,10 +144,10 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 		count, err := CountUserTokens(userId)
 		if err != nil {
 			common.SysLog("failed to count user tokens: " + err.Error())
-			return nil, 0, errors.New("获取令牌数量失败")
+			return nil, 0, errors.New("Lấy số lượng token thất bại")
 		}
 		if int(count) > maxTokens {
-			return nil, 0, errors.New("令牌数量超过上限，仅允许精确搜索，请勿使用 % 通配符")
+			return nil, 0, errors.New("Số lượng token vượt quá giới hạn, chỉ cho phép tìm kiếm chính xác, vui lòng không sử dụng ký tự đại diện %")
 		}
 	}
 
@@ -173,14 +173,14 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 	err = baseQuery.Limit(maxTokens).Count(&total).Error
 	if err != nil {
 		common.SysError("failed to count search tokens: " + err.Error())
-		return nil, 0, errors.New("搜索令牌失败")
+		return nil, 0, errors.New("Tìm kiếm token thất bại")
 	}
 
 	// 再分页查数据
 	err = baseQuery.Order("id desc").Offset(offset).Limit(limit).Find(&tokens).Error
 	if err != nil {
 		common.SysError("failed to search tokens: " + err.Error())
-		return nil, 0, errors.New("搜索令牌失败")
+		return nil, 0, errors.New("Tìm kiếm token thất bại")
 	}
 	return tokens, total, nil
 }
@@ -227,7 +227,7 @@ func ValidateUserToken(key string) (token *Token, err error) {
 
 func GetTokenByIds(id int, userId int) (*Token, error) {
 	if id == 0 || userId == 0 {
-		return nil, errors.New("id 或 userId 为空！")
+		return nil, errors.New("id hoặc userId bị trống!")
 	}
 	token := Token{Id: id, UserId: userId}
 	var err error = nil
@@ -237,7 +237,7 @@ func GetTokenByIds(id int, userId int) (*Token, error) {
 
 func GetTokenById(id int) (*Token, error) {
 	if id == 0 {
-		return nil, errors.New("id 为空！")
+		return nil, errors.New("id bị trống!")
 	}
 	token := Token{Id: id}
 	var err error = nil
@@ -362,7 +362,7 @@ func DisableModelLimits(tokenId int) error {
 func DeleteTokenById(id int, userId int) (err error) {
 	// Why we need userId here? In case user want to delete other's token.
 	if id == 0 || userId == 0 {
-		return errors.New("id 或 userId 为空！")
+		return errors.New("id hoặc userId bị trống!")
 	}
 	token := Token{Id: id, UserId: userId}
 	err = DB.Where(token).First(&token).Error
@@ -374,7 +374,7 @@ func DeleteTokenById(id int, userId int) (err error) {
 
 func IncreaseTokenQuota(tokenId int, key string, quota int) (err error) {
 	if quota < 0 {
-		return errors.New("quota 不能为负数！")
+		return errors.New("quota không được là số âm!")
 	}
 	if common.RedisEnabled {
 		gopool.Go(func() {
@@ -404,7 +404,7 @@ func increaseTokenQuota(id int, quota int) (err error) {
 
 func DecreaseTokenQuota(id int, key string, quota int) (err error) {
 	if quota < 0 {
-		return errors.New("quota 不能为负数！")
+		return errors.New("quota không được là số âm!")
 	}
 	if common.RedisEnabled {
 		gopool.Go(func() {
@@ -442,7 +442,7 @@ func CountUserTokens(userId int) (int64, error) {
 // BatchDeleteTokens 删除指定用户的一组令牌，返回成功删除数量
 func BatchDeleteTokens(ids []int, userId int) (int, error) {
 	if len(ids) == 0 {
-		return 0, errors.New("ids 不能为空！")
+		return 0, errors.New("ids không được trống!")
 	}
 
 	tx := DB.Begin()
@@ -489,7 +489,7 @@ func InvalidateUserTokensCache(userId int) error {
 		return nil
 	}
 	if userId <= 0 {
-		return errors.New("userId 无效")
+		return errors.New("userId không hợp lệ")
 	}
 	var tokens []Token
 	if err := DB.Unscoped().

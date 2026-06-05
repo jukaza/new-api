@@ -123,7 +123,7 @@ func UpdateOption(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "无效的参数",
+			"message": "Tham số không hợp lệ",
 		})
 		return
 	}
@@ -145,7 +145,7 @@ func UpdateOption(c *gin.Context) {
 		}
 	default:
 		if isPaymentComplianceOptionKey(option.Key) {
-			common.ApiErrorMsg(c, "合规确认字段不允许通过通用设置接口修改")
+			common.ApiErrorMsg(c, "Trường xác nhận tuân thủ không được phép sửa đổi thông qua giao diện thiết lập chung")
 			return
 		}
 	}
@@ -154,7 +154,7 @@ func UpdateOption(c *gin.Context) {
 		if option.Value == "true" && common.GitHubClientId == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法启用 GitHub OAuth，请先填入 GitHub Client Id 以及 GitHub Client Secret！",
+				"message": "Không thể bật GitHub OAuth, vui lòng điền GitHub Client ID và GitHub Client Secret trước!",
 			})
 			return
 		}
@@ -162,7 +162,7 @@ func UpdateOption(c *gin.Context) {
 		if option.Value == "true" && system_setting.GetDiscordSettings().ClientId == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法启用 Discord OAuth，请先填入 Discord Client Id 以及 Discord Client Secret！",
+				"message": "Không thể bật Discord OAuth, vui lòng điền Discord Client ID và Discord Client Secret trước!",
 			})
 			return
 		}
@@ -170,7 +170,7 @@ func UpdateOption(c *gin.Context) {
 		if option.Value == "true" && system_setting.GetOIDCSettings().ClientId == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法启用 OIDC 登录，请先填入 OIDC Client Id 以及 OIDC Client Secret！",
+				"message": "Không thể bật đăng nhập OIDC, vui lòng điền OIDC Client ID và OIDC Client Secret trước!",
 			})
 			return
 		}
@@ -178,7 +178,7 @@ func UpdateOption(c *gin.Context) {
 		if option.Value == "true" && common.LinuxDOClientId == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法启用 LinuxDO OAuth，请先填入 LinuxDO Client Id 以及 LinuxDO Client Secret！",
+				"message": "Không thể bật LinuxDO OAuth, vui lòng điền LinuxDO Client ID và LinuxDO Client Secret trước!",
 			})
 			return
 		}
@@ -186,7 +186,7 @@ func UpdateOption(c *gin.Context) {
 		if option.Value == "true" && len(common.EmailDomainWhitelist) == 0 {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法启用邮箱域名限制，请先填入限制的邮箱域名！",
+				"message": "Không thể bật giới hạn tên miền email, vui lòng điền danh sách tên miền email bị giới hạn trước!",
 			})
 			return
 		}
@@ -194,7 +194,7 @@ func UpdateOption(c *gin.Context) {
 		if option.Value == "true" && common.WeChatServerAddress == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法启用微信登录，请先填入微信登录相关配置信息！",
+				"message": "Không thể bật đăng nhập WeChat, vui lòng điền thông tin cấu hình liên quan đến WeChat trước!",
 			})
 			return
 		}
@@ -202,7 +202,7 @@ func UpdateOption(c *gin.Context) {
 		if option.Value == "true" && common.TurnstileSiteKey == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法启用 Turnstile 校验，请先填入 Turnstile 校验相关配置信息！",
+				"message": "Không thể bật xác minh Turnstile, vui lòng điền thông tin cấu hình liên quan đến Turnstile trước!",
 			})
 
 			return
@@ -211,7 +211,7 @@ func UpdateOption(c *gin.Context) {
 		if option.Value == "true" && common.TelegramBotToken == "" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无法启用 Telegram OAuth，请先填入 Telegram Bot Token！",
+				"message": "Không thể bật Telegram OAuth, vui lòng điền Telegram Bot Token trước!",
 			})
 			return
 		}
@@ -219,7 +219,7 @@ func UpdateOption(c *gin.Context) {
 		if option.Value != "default" && option.Value != "classic" {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "无效的主题值，可选值：default（新版前端）、classic（经典前端）",
+				"message": "Giá trị giao diện không hợp lệ, giá trị tùy chọn: default (Giao diện thương mại mới), classic (Giao diện cũ)",
 			})
 			return
 		}
@@ -237,7 +237,7 @@ func UpdateOption(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "图片倍率设置失败: " + err.Error(),
+				"message": "Thiết lập tỷ lệ hình ảnh thất bại: " + err.Error(),
 			})
 			return
 		}
@@ -246,7 +246,7 @@ func UpdateOption(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "音频倍率设置失败: " + err.Error(),
+				"message": "Thiết lập tỷ lệ âm thanh thất bại: " + err.Error(),
 			})
 			return
 		}
@@ -255,7 +255,7 @@ func UpdateOption(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "音频补全倍率设置失败: " + err.Error(),
+				"message": "Thiết lập tỷ lệ hoàn thành âm thanh thất bại: " + err.Error(),
 			})
 			return
 		}
@@ -264,7 +264,7 @@ func UpdateOption(c *gin.Context) {
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
-				"message": "缓存创建倍率设置失败: " + err.Error(),
+				"message": "Thiết lập tỷ lệ tạo cache thất bại: " + err.Error(),
 			})
 			return
 		}

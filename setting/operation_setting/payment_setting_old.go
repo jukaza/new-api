@@ -1,5 +1,5 @@
 /**
-此文件为旧版支付设置文件，如需增加新的参数、变量等，请在 payment_setting.go 中添加
+File này là cấu hình thanh toán phiên bản cũ. Nếu bạn cần thêm tham số, biến mới, vui lòng thêm vào payment_setting.go
 This file is the old version of the payment settings file. If you need to add new parameters, variables, etc., please add them in payment_setting.go
 */
 
@@ -19,17 +19,17 @@ var USDExchangeRate = 7.3
 
 var PayMethods = []map[string]string{
 	{
-		"name":  "支付宝",
+		"name":  "Alipay",
 		"color": "rgba(var(--semi-blue-5), 1)",
 		"type":  "alipay",
 	},
 	{
-		"name":  "微信",
+		"name":  "WeChat",
 		"color": "rgba(var(--semi-green-5), 1)",
 		"type":  "wxpay",
 	},
 	{
-		"name":      "自定义1",
+		"name":      "Tùy chỉnh 1",
 		"color":     "black",
 		"type":      "custom1",
 		"min_topup": "50",

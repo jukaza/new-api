@@ -17,7 +17,8 @@
 ## Công nghệ sử dụng (Tech Stack)
 
 - **Backend**: Go 1.22+, Gin web framework, GORM v2 ORM
-- **Frontend**: React 19, TypeScript, Rsbuild, Base UI, Tailwind CSS
+- **Frontend (Dự án bán hàng mới)**: React, Vite, TypeScript, Tailwind CSS, shadcn/ui
+- **Frontend (Giao diện cũ dùng làm tài liệu tham khảo)**: React 19, TypeScript, Rsbuild, Base UI, Tailwind CSS (đặt tại `web/default_old/`)
 - **Databases**: SQLite, MySQL, PostgreSQL (phải hỗ trợ đồng thời cả ba hệ quản trị cơ sở dữ liệu này)
 - **Cache**: Redis (go-redis) + in-memory cache
 - **Auth**: JWT, WebAuthn/Passkeys, OAuth (GitHub, Discord, OIDC, v.v.)
@@ -44,9 +45,10 @@ i18n/          — Backend internationalization (go-i18n, en/zh)
 oauth/         — OAuth provider implementations
 pkg/           — Internal packages (cachex, ionet)
 web/             — Frontend themes container
- web/default/   — Default frontend (React 19, Rsbuild, Base UI, Tailwind)
-  web/classic/   — Classic frontend (React 18, Vite, Semi Design)
-  web/default/src/i18n/ — Frontend internationalization (i18next, zh/en/fr/ru/ja/vi)
+ web/default/   — Giao diện thương mại mới (React + Vite + TypeScript + Tailwind CSS)
+ web/default_old/ — Giao diện cũ để tham khảo (React 19, Rsbuild, Base UI, Tailwind)
+  web/default_old/src/i18n/ — Hệ thống đa ngôn ngữ cũ
+ web/classic/   — Classic frontend (React 18, Vite, Semi Design)
 ```
 
 ## Đa ngôn ngữ (i18n)
@@ -55,12 +57,13 @@ web/             — Frontend themes container
 - Thư viện: `nicksnyder/go-i18n/v2`
 - Ngôn ngữ: en, zh
 
-### Frontend (`web/default/src/i18n/`)
+### Frontend Tham khảo (`web/default_old/src/i18n/`)
 - Thư viện: `i18next` + `react-i18next` + `i18next-browser-languagedetector`
 - Ngôn ngữ: en (base), zh (fallback), fr, ru, ja, vi
-- Các tệp dịch: `web/default/src/i18n/locales/{lang}.json` — JSON phẳng, các khóa (keys) là chuỗi gốc tiếng Anh
+- Các tệp dịch: `web/default_old/src/i18n/locales/{lang}.json` — JSON phẳng, các khóa (keys) là chuỗi gốc tiếng Anh
 - Cách dùng: Hook `useTranslation()`, gọi `t('English key')` trong các component
-- Công cụ CLI: `bun run i18n:sync` (chạy từ thư mục `web/default/`)
+- Công cụ CLI: `bun run i18n:sync` (chạy từ thư mục `web/default_old/`)
+
 
 ## Các quy tắc bắt buộc (Rules)
 

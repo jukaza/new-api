@@ -36,34 +36,34 @@ function formatJsonForEditor(value: string, fallback: string) {
 }
 
 const MODELS_SECTIONS = [
-  {
-    id: 'global',
-    titleKey: 'Global Model Configuration',
-    build: (settings: ModelSettings) => (
-      <GlobalSettingsCard
-        defaultValues={{
-          global: {
-            pass_through_request_enabled:
-              settings['global.pass_through_request_enabled'],
-            thinking_model_blacklist: formatJsonForEditor(
-              settings['global.thinking_model_blacklist'],
-              '[]'
-            ),
-            chat_completions_to_responses_policy: formatJsonForEditor(
-              settings['global.chat_completions_to_responses_policy'],
-              '{}'
-            ),
-          },
-          general_setting: {
-            ping_interval_enabled:
-              settings['general_setting.ping_interval_enabled'],
-            ping_interval_seconds:
-              settings['general_setting.ping_interval_seconds'],
-          },
-        }}
-      />
-    ),
-  },
+//   {
+//     id: 'global',
+//     titleKey: 'Global Model Configuration',
+//     build: (settings: ModelSettings) => (
+//       <GlobalSettingsCard
+//         defaultValues={{
+//           global: {
+//             pass_through_request_enabled:
+//               settings['global.pass_through_request_enabled'],
+//             thinking_model_blacklist: formatJsonForEditor(
+//               settings['global.thinking_model_blacklist'],
+//               '[]'
+//             ),
+//             chat_completions_to_responses_policy: formatJsonForEditor(
+//               settings['global.chat_completions_to_responses_policy'],
+//               '{}'
+//             ),
+//           },
+//           general_setting: {
+//             ping_interval_enabled:
+//               settings['general_setting.ping_interval_enabled'],
+//             ping_interval_seconds:
+//               settings['general_setting.ping_interval_seconds'],
+//           },
+//         }}
+//       />
+//     ),
+//   },
   {
     id: 'gemini',
     titleKey: 'Gemini',
@@ -158,7 +158,7 @@ export type ModelSectionId = (typeof MODELS_SECTIONS)[number]['id']
 
 const modelsRegistry = createSectionRegistry<ModelSectionId, ModelSettings>({
   sections: MODELS_SECTIONS,
-  defaultSection: 'global',
+  defaultSection: 'channel-affinity',
   basePath: '/system-settings/models',
   urlStyle: 'path',
 })

@@ -181,6 +181,7 @@ func (channel *Channel) AddAbilities(tx *gorm.DB) error {
 			return err
 		}
 	}
+	_ = SyncModelsFromChannels(tx)
 	return nil
 }
 
@@ -254,9 +255,14 @@ func (channel *Channel) UpdateAbilities(tx *gorm.DB) error {
 
 	// 如果是新创建的事务，需要提交
 	if isNewTx {
-		return tx.Commit().Error
+		err = tx.Commit().Error
+		if err == nil {
+			_ = SyncModelsFromChannels(nil)
+		}
+		return err
 	}
 
+	_ = SyncModelsFromChannels(tx)
 	return nil
 }
 
@@ -339,3 +345,76 @@ func FixAbility() (int, int, error) {
 	InitChannelCache()
 	return successCount, failCount, nil
 }
+
+func SyncModelsFromChannels(tx *gorm.DB) error {
+	useDB := DB
+	if tx != nil {
+		useDB = tx
+	}
+
+	// 1. Get all channels
+	var channels []Channel
+	if err := useDB.Find(&channels).Error; err != nil {
+		return err
+	}
+
+	// 2. Collect all standard model names
+	standardModels := make(map[string]bool)
+	for _, channel := range channels {
+		var modelMap map[string]string
+		if channel.ModelMapping != nil && *channel.ModelMapping != "" && *channel.ModelMapping != "{}" {
+			_ = common.Unmarshal([]byte(*channel.ModelMapping), &modelMap)
+		}
+
+		// Add all keys from modelMap (client-facing standard models)
+		for k := range modelMap {
+			k = strings.TrimSpace(k)
+			if k != "" {
+				standardModels[k] = true
+			}
+		}
+
+		// Build a set of mapping values to exclude them (these are raw upstream models)
+		isMappedValue := make(map[string]bool)
+		for _, v := range modelMap {
+			v = strings.TrimSpace(v)
+			if v != "" {
+				isMappedValue[v] = true
+			}
+		}
+
+		// Add models from channel.Models that are not mapped values
+		if channel.Models != "" {
+			for _, m := range strings.Split(channel.Models, ",") {
+				m = strings.TrimSpace(m)
+				if m != "" && !isMappedValue[m] {
+					standardModels[m] = true
+				}
+			}
+		}
+	}
+
+	// 3. For each standard model name, make sure it exists in the `models` table.
+	// If it doesn't exist, insert it.
+	for name := range standardModels {
+		var count int64
+		if err := useDB.Model(&Model{}).Where("model_name = ?", name).Count(&count).Error; err != nil {
+			return err
+		}
+		if count == 0 {
+			m := &Model{
+				ModelName:    name,
+				Status:       1,
+				SyncOfficial: 0,
+			}
+			now := common.GetTimestamp()
+			m.CreatedTime = now
+			m.UpdatedTime = now
+			if err := useDB.Create(m).Error; err != nil {
+				common.SysError(fmt.Sprintf("Auto-sync model insert failed for %s: %s", name, err.Error()))
+			}
+		}
+	}
+	return nil
+}
+

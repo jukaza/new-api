@@ -203,6 +203,9 @@ func InitDB() (err error) {
 		}
 		common.SysLog("database migration started")
 		err = migrateDB()
+		if err == nil {
+			_ = SyncModelsFromChannels(nil)
+		}
 		return err
 	} else {
 		common.FatalLog(err)

@@ -20,6 +20,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { RotateCcw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { getUserModels, getUserGroups } from './api'
 import { PlaygroundChat } from './components/playground-chat'
 import { PlaygroundInput } from './components/playground-input'
@@ -39,6 +41,7 @@ export function Playground() {
     setModels,
     setGroups,
     updateConfig,
+    clearMessages,
   } = usePlaygroundState()
 
   const { sendChat, stopGeneration, isGenerating } = useChatHandler({
@@ -190,6 +193,23 @@ export function Playground() {
 
   return (
     <div className='relative flex size-full flex-col overflow-hidden'>
+      {/* Top Header Bar */}
+      <div className='flex h-14 items-center justify-between border-b px-6 py-2 shrink-0 bg-background/50 backdrop-blur'>
+        <h2 className='text-sm font-semibold'>{t('Playground')}</h2>
+        {messages.length > 0 && (
+          <Button
+            variant='ghost'
+            size='sm'
+            onClick={clearMessages}
+            disabled={isGenerating}
+            className='text-muted-foreground hover:text-destructive gap-1.5'
+          >
+            <RotateCcw className='h-3.5 w-3.5' />
+            {t('Clear Chat')}
+          </Button>
+        )}
+      </div>
+
       {/* Full-width scroll container: scrolling works even over side whitespace */}
       <div className='flex flex-1 flex-col overflow-hidden'>
         <PlaygroundChat

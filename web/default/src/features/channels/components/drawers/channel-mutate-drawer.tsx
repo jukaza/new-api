@@ -1097,35 +1097,38 @@ export function ChannelMutateDrawer({
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name='type'
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('Type *')}</FormLabel>
-                            <FormControl>
-                              <Combobox
-                                options={channelTypeOptions}
-                                value={String(field.value)}
-                                onValueChange={(value) => {
-                                  const nextType = Number(value)
-                                  if (
-                                    Number.isInteger(nextType) &&
-                                    nextType > 0
-                                  ) {
-                                    field.onChange(nextType)
-                                  }
-                                }}
-                                placeholder={t('Select channel type')}
-                                searchPlaceholder={t('Search channel type...')}
-                                emptyText={t('No channel type found.')}
-                                allowCustomValue
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {/* Ẩn trường chọn Loại nhà cung cấp theo yêu cầu tinh giản giao diện */}
+                      {false && (
+                        <FormField
+                          control={form.control}
+                          name='type'
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t('Type *')}</FormLabel>
+                              <FormControl>
+                                <Combobox
+                                  options={channelTypeOptions}
+                                  value={String(field.value)}
+                                  onValueChange={(value) => {
+                                    const nextType = Number(value)
+                                    if (
+                                      Number.isInteger(nextType) &&
+                                      nextType > 0
+                                    ) {
+                                      field.onChange(nextType)
+                                    }
+                                  }}
+                                  placeholder={t('Select channel type')}
+                                  searchPlaceholder={t('Search channel type...')}
+                                  emptyText={t('No channel type found.')}
+                                  allowCustomValue
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                     </div>
 
                     <FormField

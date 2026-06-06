@@ -53,6 +53,9 @@ export function ModelsTable() {
     description: false,
     bound_channels: false,
     quota_types: false,
+    name_rule: false,
+    sync_official: false,
+    endpoints: false,
   })
   const [rowSelection, setRowSelection] = useState({})
 

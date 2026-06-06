@@ -84,6 +84,13 @@ dev-web-commerce:
 
 dev: dev-api dev-web
 
+dev-local:
+	@echo "Starting local backend and default frontend..."
+	@go run main.go & \
+		backend_pid=$$!; \
+		trap 'kill $$backend_pid 2>/dev/null' INT TERM EXIT; \
+		cd $(FRONTEND_DIR) && bun run dev -- --port $(DEV_FRONTEND_DEFAULT_PORT)
+
 reset-setup:
 	@echo "Resetting local setup wizard state..."
 	@if docker compose -f $(DEV_COMPOSE_FILE) ps --services --status running | grep -qx "$(DEV_POSTGRES_SERVICE)"; then \

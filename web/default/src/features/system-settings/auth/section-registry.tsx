@@ -77,46 +77,6 @@ const AUTH_SECTIONS = [
       />
     ),
   },
-  {
-    id: 'passkey',
-    titleKey: 'Passkey Authentication',
-    build: (settings: AuthSettings) => (
-      <PasskeySection
-        defaultValues={{
-          'passkey.enabled': settings['passkey.enabled'],
-          'passkey.rp_display_name': settings['passkey.rp_display_name'],
-          'passkey.rp_id': settings['passkey.rp_id'],
-          'passkey.origins': settings['passkey.origins'],
-          'passkey.allow_insecure_origin':
-            settings['passkey.allow_insecure_origin'],
-          'passkey.user_verification': settings['passkey.user_verification'] as
-            | 'required'
-            | 'preferred'
-            | 'discouraged',
-          'passkey.attachment_preference':
-            settings['passkey.attachment_preference'],
-        }}
-      />
-    ),
-  },
-  {
-    id: 'bot-protection',
-    titleKey: 'Bot Protection',
-    build: (settings: AuthSettings) => (
-      <BotProtectionSection
-        defaultValues={{
-          TurnstileCheckEnabled: settings.TurnstileCheckEnabled,
-          TurnstileSiteKey: settings.TurnstileSiteKey,
-          TurnstileSecretKey: settings.TurnstileSecretKey,
-        }}
-      />
-    ),
-  },
-  {
-    id: 'custom-oauth',
-    titleKey: 'Custom OAuth',
-    build: () => <CustomOAuthSection />,
-  },
 ] as const
 
 export type AuthSectionId = (typeof AUTH_SECTIONS)[number]['id']

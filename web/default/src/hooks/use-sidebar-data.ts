@@ -87,13 +87,6 @@ export function useSidebarData(): SidebarData {
             url: '/usage-logs/common',
             icon: FileText,
           },
-          {
-            title: t('Task Logs'),
-            url: '/usage-logs/task',
-            activeUrls: ['/usage-logs/drawing'],
-            configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
-            icon: ListTodo,
-          },
         ],
       },
       {
@@ -130,16 +123,6 @@ export function useSidebarData(): SidebarData {
             title: t('Users'),
             url: '/users',
             icon: Users,
-          },
-          {
-            title: t('Redemption Codes'),
-            url: '/redemption-codes',
-            icon: Ticket,
-          },
-          {
-            title: t('Subscription Management'),
-            url: '/subscriptions',
-            icon: CreditCard,
           },
           {
             title: t('System Settings'),

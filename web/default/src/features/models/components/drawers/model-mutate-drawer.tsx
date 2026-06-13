@@ -81,8 +81,10 @@ import type { ModelSettings } from '@/features/system-settings/types'
 import { safeJsonParse } from '@/features/system-settings/utils/json-parser'
 import { createModel, updateModel, getModel, getVendors } from '../../api'
 import { getNameRuleOptions, ENDPOINT_TEMPLATES } from '../../constants'
-import { modelsQueryKeys, vendorsQueryKeys, parseModelTags } from '../../lib'
+import { modelsQueryKeys, vendorsQueryKeys, parseModelTags, POPULAR_ICONS } from '../../lib'
 import type { Model } from '../../types'
+import { getLobeIcon } from '@/lib/lobe-icon'
+import { Combobox } from '@/components/ui/combobox'
 
 // Extended schema for ratio configuration (internal form state only)
 const extendedModelFormSchema = z.object({
@@ -705,15 +707,31 @@ export function ModelMutateDrawer({
                 name='icon'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('Icon')}</FormLabel>
+                    <div className='flex items-center gap-2'>
+                      <FormLabel className='flex-1'>{t('Icon')}</FormLabel>
+                      {field.value && (
+                        <div className='flex size-6 items-center justify-center rounded-md bg-muted/40'>
+                          {getLobeIcon(field.value, 16)}
+                        </div>
+                      )}
+                    </div>
                     <FormControl>
-                      <Input
-                        placeholder={t('OpenAI, Anthropic, etc.')}
-                        {...field}
+                      <Combobox
+                        options={POPULAR_ICONS.map((item) => ({
+                          value: item.value,
+                          label: item.label,
+                          icon: getLobeIcon(item.icon, 16),
+                        }))}
+                        value={field.value}
+                        onValueChange={(val) => field.onChange(val || '')}
+                        allowCustomValue={true}
+                        placeholder={t('Select or type logo key...')}
+                        searchPlaceholder={t('Search logo...')}
+                        emptyText={t('No logo found. Press Enter to use custom key.')}
                       />
                     </FormControl>
                     <FormDescription className='text-xs'>
-                      {t('@lobehub/icons key')}
+                      {t('Select a popular logo or type custom @lobehub/icons key')}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

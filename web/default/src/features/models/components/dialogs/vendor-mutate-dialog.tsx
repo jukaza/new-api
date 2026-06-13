@@ -44,8 +44,10 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { createVendor, updateVendor } from '../../api'
-import { vendorsQueryKeys, modelsQueryKeys } from '../../lib'
+import { vendorsQueryKeys, modelsQueryKeys, POPULAR_ICONS } from '../../lib'
 import { vendorFormSchema, type Vendor } from '../../types'
+import { getLobeIcon } from '@/lib/lobe-icon'
+import { Combobox } from '@/components/ui/combobox'
 
 type VendorMutateDialogProps = {
   open: boolean
@@ -178,15 +180,31 @@ export function VendorMutateDialog({
               name='icon'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('Icon')}</FormLabel>
+                  <div className='flex items-center gap-2'>
+                    <FormLabel className='flex-1'>{t('Icon')}</FormLabel>
+                    {field.value && (
+                      <div className='flex size-6 items-center justify-center rounded-md bg-muted/40'>
+                        {getLobeIcon(field.value, 16)}
+                      </div>
+                    )}
+                  </div>
                   <FormControl>
-                    <Input
-                      placeholder={t('OpenAI, Anthropic, Google, etc.')}
-                      {...field}
+                    <Combobox
+                      options={POPULAR_ICONS.map((item) => ({
+                        value: item.value,
+                        label: item.label,
+                        icon: getLobeIcon(item.icon, 16),
+                      }))}
+                      value={field.value}
+                      onValueChange={(val) => field.onChange(val || '')}
+                      allowCustomValue={true}
+                      placeholder={t('Select or type logo key...')}
+                      searchPlaceholder={t('Search logo...')}
+                      emptyText={t('No logo found. Press Enter to use custom key.')}
                     />
                   </FormControl>
                   <FormDescription>
-                    {t('@lobehub/icons key name')}
+                    {t('Select a popular logo or type custom @lobehub/icons key')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

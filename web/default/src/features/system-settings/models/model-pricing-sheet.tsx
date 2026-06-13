@@ -22,6 +22,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertTriangle, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 import { cn } from '@/lib/utils'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -222,10 +223,10 @@ function toNumberOrNull(value: unknown): number | null {
   return Number.isFinite(num) ? num : null
 }
 
-function ratioToBasePrice(ratio: unknown): string {
+function ratioToBasePrice(ratio: unknown, rate = 1): string {
   const num = toNumberOrNull(ratio)
   if (num === null) return ''
-  return formatPricingNumber(num * 2)
+  return formatPricingNumber(num * 2 * rate)
 }
 
 function deriveLanePrice(
@@ -239,7 +240,7 @@ function deriveLanePrice(
   return formatPricingNumber(ratioNumber * denominatorNumber)
 }
 
-function createInitialLaneState(data?: ModelRatioData | null) {
+function createInitialLaneState(data?: ModelRatioData | null, rate = 1) {
   if (!data) {
     return {
       promptPrice: '',
@@ -248,7 +249,7 @@ function createInitialLaneState(data?: ModelRatioData | null) {
     }
   }
 
-  const promptPrice = ratioToBasePrice(data.ratio)
+  const promptPrice = ratioToBasePrice(data.ratio, rate)
   const audioInputPrice = deriveLanePrice(data.audioRatio, promptPrice)
   const prices: Record<LaneKey, string> = {
     completion: deriveLanePrice(data.completionRatio, promptPrice),
@@ -295,7 +296,8 @@ function buildPreviewRows(
   promptPrice: string,
   lanePrices: Record<LaneKey, string>,
   laneEnabled: Record<LaneKey, boolean>,
-  t: (key: string) => string
+  t: (key: string) => string,
+  symbol = '$'
 ): PreviewRow[] {
   if (mode === 'tiered_expr') {
     const effectiveExpr = combineBillingExpr(billingExpr, requestRuleExpr)
@@ -315,7 +317,7 @@ function buildPreviewRows(
       {
         key: 'price',
         label: 'ModelPrice',
-        value: values.price || t('Empty'),
+        value: values.price ? `${symbol}${values.price}` : t('Empty'),
       },
     ]
   }
@@ -324,14 +326,14 @@ function buildPreviewRows(
     {
       key: 'inputPrice',
       label: t('Input price'),
-      value: promptPrice ? `$${promptPrice}` : t('Empty'),
+      value: promptPrice ? `${symbol}${promptPrice}` : t('Empty'),
     },
     {
       key: 'completion',
       label: t('Completion price'),
       value:
         laneEnabled.completion && lanePrices.completion
-          ? `$${lanePrices.completion}`
+          ? `${symbol}${lanePrices.completion}`
           : t('Empty'),
     },
     {
@@ -339,7 +341,7 @@ function buildPreviewRows(
       label: t('Cache read price'),
       value:
         laneEnabled.cache && lanePrices.cache
-          ? `$${lanePrices.cache}`
+          ? `${symbol}${lanePrices.cache}`
           : t('Empty'),
     },
     {
@@ -347,7 +349,7 @@ function buildPreviewRows(
       label: t('Cache write price'),
       value:
         laneEnabled.createCache && lanePrices.createCache
-          ? `$${lanePrices.createCache}`
+          ? `${symbol}${lanePrices.createCache}`
           : t('Empty'),
     },
     {
@@ -355,7 +357,7 @@ function buildPreviewRows(
       label: t('Image input price'),
       value:
         laneEnabled.image && lanePrices.image
-          ? `$${lanePrices.image}`
+          ? `${symbol}${lanePrices.image}`
           : t('Empty'),
     },
     {
@@ -363,7 +365,7 @@ function buildPreviewRows(
       label: t('Audio input price'),
       value:
         laneEnabled.audioInput && lanePrices.audioInput
-          ? `$${lanePrices.audioInput}`
+          ? `${symbol}${lanePrices.audioInput}`
           : t('Empty'),
     },
     {
@@ -371,7 +373,7 @@ function buildPreviewRows(
       label: t('Audio output price'),
       value:
         laneEnabled.audioOutput && lanePrices.audioOutput
-          ? `$${lanePrices.audioOutput}`
+          ? `${symbol}${lanePrices.audioOutput}`
           : t('Empty'),
     },
   ]
@@ -422,6 +424,11 @@ export function ModelPricingEditorPanel({
   className,
 }: ModelPricingEditorPanelProps) {
   const { t } = useTranslation()
+  const config = useSystemConfigStore((s) => s.config)
+  const quotaDisplayType = config.currency?.quotaDisplayType || 'CUSTOM'
+  const symbol = quotaDisplayType === 'CUSTOM' ? (config.currency?.customCurrencySymbol || 'đ') : (quotaDisplayType === 'CNY' ? '¥' : '$')
+  const rate = quotaDisplayType === 'CUSTOM' ? (config.currency?.customCurrencyExchangeRate || 25000) : (quotaDisplayType === 'CNY' ? (config.currency?.usdExchangeRate || 1) : 1)
+
   const [pricingMode, setPricingMode] = useState<PricingMode>('per-token')
   const [promptPrice, setPromptPrice] = useState('')
   const [lanePrices, setLanePrices] = useState<Record<LaneKey, string>>({
@@ -451,12 +458,12 @@ export function ModelPricingEditorPanel({
   })
 
   useEffect(() => {
-    const nextLaneState = createInitialLaneState(editData)
+    const nextLaneState = createInitialLaneState(editData, rate)
 
     if (editData) {
       form.reset({
         name: editData.name,
-        price: editData.price || '',
+        price: editData.price ? formatPricingNumber(parseFloat(editData.price) * rate) : '',
         ratio: editData.ratio || '',
         cacheRatio: editData.cacheRatio || '',
         createCacheRatio: editData.createCacheRatio || '',
@@ -495,7 +502,7 @@ export function ModelPricingEditorPanel({
     setLanePrices(nextLaneState.prices)
     setLaneEnabled(nextLaneState.enabled)
     setPreviewOpen(true)
-  }, [editData, form])
+  }, [editData, form, rate])
 
   const setFormValue = (field: keyof ModelPricingFormValues, value: string) => {
     form.setValue(field, value, {
@@ -532,7 +539,7 @@ export function ModelPricingEditorPanel({
     const inputPrice = toNumberOrNull(nextPromptPrice)
     setFormValue(
       'ratio',
-      inputPrice !== null ? formatPricingNumber(inputPrice / 2) : ''
+      inputPrice !== null ? formatPricingNumber(inputPrice / (2 * rate)) : ''
     )
 
     laneConfigs.forEach(({ key }) => {
@@ -628,7 +635,8 @@ export function ModelPricingEditorPanel({
         promptPrice,
         lanePrices,
         laneEnabled,
-        t
+        t,
+        symbol
       ),
     [
       billingExpr,
@@ -639,6 +647,7 @@ export function ModelPricingEditorPanel({
       requestRuleExpr,
       t,
       watchedValues,
+      symbol,
     ]
   )
 
@@ -715,7 +724,7 @@ export function ModelPricingEditorPanel({
     const data: ModelRatioData = {
       name: values.name.trim(),
       billingMode: pricingMode,
-      price: values.price || '',
+      price: values.price ? formatPricingNumber(parseFloat(values.price) / rate) : '',
       ratio: values.ratio || '',
       cacheRatio: values.cacheRatio || '',
       createCacheRatio: values.createCacheRatio || '',
@@ -819,11 +828,12 @@ export function ModelPricingEditorPanel({
                       <FieldLabel>{t('Input price')}</FieldLabel>
                       <PriceInput
                         value={promptPrice}
-                        placeholder='3'
+                        placeholder={formatPricingNumber(3 * rate)}
                         onChange={handlePromptPriceChange}
+                        symbol={symbol}
                       />
                       <FieldDescription>
-                        {t('USD price per 1M input tokens.')}
+                        {t('Price per 1M input tokens.')}
                       </FieldDescription>
                     </Field>
 
@@ -848,6 +858,8 @@ export function ModelPricingEditorPanel({
                             onChange={(value) =>
                               handleLanePriceChange(lane.key, value)
                             }
+                            symbol={symbol}
+                            rate={rate}
                           />
                         )
                       })}
@@ -867,10 +879,10 @@ export function ModelPricingEditorPanel({
                         <FormLabel>{t('Fixed price')}</FormLabel>
                         <FormControl>
                           <InputGroup>
-                            <InputGroupAddon>$</InputGroupAddon>
+                            <InputGroupAddon>{symbol}</InputGroupAddon>
                             <InputGroupInput
                               inputMode='decimal'
-                              placeholder='0.01'
+                              placeholder={formatPricingNumber(0.01 * rate)}
                               {...field}
                               onChange={(event) => {
                                 const value = event.target.value
@@ -886,7 +898,7 @@ export function ModelPricingEditorPanel({
                         </FormControl>
                         <FormDescription>
                           {t(
-                            'Cost in USD per request, regardless of tokens used.'
+                            'Cost per request, regardless of tokens used.'
                           )}
                         </FormDescription>
                         <FormMessage />
@@ -987,10 +999,11 @@ function PriceInput(props: {
   placeholder?: string
   disabled?: boolean
   onChange: (value: string) => void
+  symbol?: string
 }) {
   return (
     <InputGroup>
-      <InputGroupAddon>$</InputGroupAddon>
+      <InputGroupAddon>{props.symbol || '$'}</InputGroupAddon>
       <InputGroupInput
         inputMode='decimal'
         value={props.value}
@@ -998,7 +1011,9 @@ function PriceInput(props: {
         disabled={props.disabled}
         onChange={(event) => props.onChange(event.target.value)}
       />
-      <InputGroupAddon align='inline-end'>$/1M</InputGroupAddon>
+      <InputGroupAddon align='inline-end'>
+        {props.symbol || '$'}/1M
+      </InputGroupAddon>
     </InputGroup>
   )
 }
@@ -1012,9 +1027,15 @@ function PriceLane(props: {
   disabled?: boolean
   onEnabledChange: (checked: boolean) => void
   onChange: (value: string) => void
+  symbol?: string
+  rate?: number
 }) {
   const { t } = useTranslation()
   const effectiveDisabled = props.disabled || !props.enabled
+  const rate = props.rate || 1
+  const scaledPlaceholder = props.placeholder
+    ? formatPricingNumber(parseFloat(props.placeholder) * rate)
+    : ''
 
   return (
     <SettingsControlGroup
@@ -1031,13 +1052,14 @@ function PriceLane(props: {
       />
       <PriceInput
         value={props.value}
-        placeholder={props.placeholder}
+        placeholder={scaledPlaceholder}
         disabled={effectiveDisabled}
         onChange={props.onChange}
+        symbol={props.symbol}
       />
       <p className='text-muted-foreground text-xs'>
         {props.enabled
-          ? t('USD price per 1M tokens.')
+          ? t('Price per 1M tokens.')
           : t('Disabled lanes are omitted on save.')}
       </p>
     </SettingsControlGroup>

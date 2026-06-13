@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { getCurrencyDisplay } from '@/lib/currency'
 import { DEFAULT_DISCOUNT_RATE } from '../constants'
 
 // ============================================================================
@@ -55,10 +56,21 @@ export function formatCurrency(amount: number | string): string {
     typeof amount === 'number' ? amount : Number.parseFloat(String(amount))
   if (!Number.isFinite(numeric)) return '-'
 
-  return new Intl.NumberFormat(undefined, {
+  const formatted = new Intl.NumberFormat(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: Math.abs(numeric) >= 1 ? 2 : 4,
   }).format(numeric)
+
+  const { meta } = getCurrencyDisplay()
+  if (meta.kind === 'tokens') {
+    return formatted
+  }
+
+  const symbol = meta.symbol || ''
+  if (symbol === 'đ' || symbol === 'VND' || symbol === 'VNĐ') {
+    return `${formatted} ${symbol}`
+  }
+  return `${symbol}${formatted}`
 }
 
 /**

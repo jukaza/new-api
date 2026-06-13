@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useState, useEffect, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 import {
   Popover,
   PopoverContent,
@@ -48,6 +49,12 @@ export function PricingEditPopover({
   const [open, setOpen] = useState(false)
   const { updatePricing, isUpdating } = useModelPricingMutation()
 
+  // Get active currency settings
+  const config = useSystemConfigStore((s) => s.config)
+  const quotaDisplayType = config.currency?.quotaDisplayType || 'CUSTOM'
+  const symbol = quotaDisplayType === 'CUSTOM' ? (config.currency?.customCurrencySymbol || 'đ') : (quotaDisplayType === 'CNY' ? '¥' : '$')
+  const rate = quotaDisplayType === 'CUSTOM' ? (config.currency?.customCurrencyExchangeRate || 25000) : (quotaDisplayType === 'CNY' ? (config.currency?.usdExchangeRate || 1) : 1)
+
   // Form states
   const [mode, setMode] = useState<'per-token' | 'per-request'>('per-token')
   const [inputPrice, setInputPrice] = useState('')
@@ -60,13 +67,16 @@ export function PricingEditPopover({
       if (initialPricing && initialPricing.mode !== 'not-set') {
         if (initialPricing.mode === 'per-request') {
           setMode('per-request')
-          setRequestPrice(initialPricing.requestPrice?.toString() || '')
+          const requestVal = initialPricing.requestPrice !== undefined ? initialPricing.requestPrice * rate : ''
+          setRequestPrice(requestVal !== '' ? Number(requestVal.toFixed(6)).toString() : '')
           setInputPrice('')
           setOutputPrice('')
         } else if (initialPricing.mode === 'per-token' || initialPricing.mode === 'expression') {
           setMode('per-token')
-          setInputPrice(initialPricing.inputPrice?.toString() || '')
-          setOutputPrice(initialPricing.outputPrice?.toString() || '')
+          const inputVal = initialPricing.inputPrice !== undefined ? initialPricing.inputPrice * rate : ''
+          const outputVal = initialPricing.outputPrice !== undefined ? initialPricing.outputPrice * rate : ''
+          setInputPrice(inputVal !== '' ? Number(inputVal.toFixed(6)).toString() : '')
+          setOutputPrice(outputVal !== '' ? Number(outputVal.toFixed(6)).toString() : '')
           setRequestPrice('')
         }
       } else {
@@ -76,27 +86,32 @@ export function PricingEditPopover({
         setRequestPrice('')
       }
     }
-  }, [open, initialPricing])
+  }, [open, initialPricing, rate])
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault()
     try {
       if (mode === 'per-token') {
-        const inp = parseFloat(inputPrice)
-        const out = parseFloat(outputPrice)
-        if (isNaN(inp) || inp < 0) {
+        const inpLocal = parseFloat(inputPrice)
+        const outLocal = parseFloat(outputPrice)
+        if (isNaN(inpLocal) || inpLocal < 0) {
           return
         }
+        // Convert local price back to system USD
+        const inp = inpLocal / rate
+        const out = isNaN(outLocal) || outLocal < 0 ? inp : outLocal / rate
         await updatePricing(modelName, {
           mode: 'per-token',
           inputPrice: inp,
-          outputPrice: isNaN(out) || out < 0 ? inp : out,
+          outputPrice: out,
         })
       } else {
-        const req = parseFloat(requestPrice)
-        if (isNaN(req) || req < 0) {
+        const reqLocal = parseFloat(requestPrice)
+        if (isNaN(reqLocal) || reqLocal < 0) {
           return
         }
+        // Convert local price back to system USD
+        const req = reqLocal / rate
         await updatePricing(modelName, {
           mode: 'per-request',
           requestPrice: req,
@@ -163,7 +178,7 @@ export function PricingEditPopover({
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="inputPrice" className="text-xs">
-                  {t('Input Price ($/1M tokens)')}
+                  {t('Input price')} ({symbol}/1M tokens)
                 </Label>
                 <Input
                   id="inputPrice"
@@ -180,7 +195,7 @@ export function PricingEditPopover({
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="outputPrice" className="text-xs">
-                  {t('Output Price ($/1M tokens)')}
+                  {t('Output price')} ({symbol}/1M tokens)
                 </Label>
                 <Input
                   id="outputPrice"
@@ -201,7 +216,7 @@ export function PricingEditPopover({
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="requestPrice" className="text-xs">
-                  {t('Price Per Request ($)')}
+                  {t('Fixed request price')} ({symbol})
                 </Label>
                 <Input
                   id="requestPrice"

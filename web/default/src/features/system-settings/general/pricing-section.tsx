@@ -136,7 +136,6 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
 
   const displayType = form.watch('general_setting.quota_display_type') ?? 'USD'
   const displayInCurrencyEnabled = form.watch('DisplayInCurrencyEnabled')
-  const showTokensOnlyOption = displayType === 'TOKENS'
   const showQuotaPerUnit =
     displayType === 'TOKENS' ||
     defaultValues.QuotaPerUnit !== DEFAULT_CURRENCY_CONFIG.quotaPerUnit
@@ -191,9 +190,7 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                   <FormLabel>{t('Display Mode')}</FormLabel>
                   <Select
                     items={[
-                      { value: 'USD', label: t('USD') },
-                      { value: 'CNY', label: t('CNY') },
-                      { value: 'CUSTOM', label: t('Custom Currency') },
+                      { value: 'CUSTOM', label: t('Custom Currency') + ' (VNĐ)' },
                       { value: 'TOKENS', label: t('Tokens Only') },
                     ]}
                     value={field.value}
@@ -206,16 +203,12 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                     </FormControl>
                     <SelectContent alignItemWithTrigger={false}>
                       <SelectGroup>
-                        <SelectItem value='USD'>{t('USD')}</SelectItem>
-                        <SelectItem value='CNY'>{t('CNY')}</SelectItem>
                         <SelectItem value='CUSTOM'>
-                          {t('Custom Currency')}
+                          {t('Custom Currency') + ' (VNĐ)'}
                         </SelectItem>
-                        {showTokensOnlyOption && (
-                          <SelectItem value='TOKENS'>
-                            {t('Tokens Only')}
-                          </SelectItem>
-                        )}
+                        <SelectItem value='TOKENS'>
+                          {t('Tokens Only')}
+                        </SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -234,11 +227,7 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {displayType === 'CNY'
-                        ? t('CNY per USD')
-                        : displayType === 'USD'
-                          ? t('USD Exchange Rate')
-                          : t('USD Exchange Rate')}
+                      {t('USD Exchange Rate')}
                     </FormLabel>
                     <FormControl>
                       <Input

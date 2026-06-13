@@ -1,21 +1,4 @@
-/*
-Copyright (C) 2023-2026 QuantumNous
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as
-published by the Free Software Foundation, either version 3 of the
-License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
-*/
+import { formatBillingCurrencyFromUSD } from '@/lib/currency'
 import { safeJsonParse } from '@/features/system-settings/utils/json-parser'
 
 export type PricingDisplayInfo = {
@@ -122,14 +105,15 @@ export function formatPriceCompact(info: PricingDisplayInfo): string {
   if (info.mode === 'expression') {
     return 'Expression'
   }
+  const opts = { digitsLarge: 4, digitsSmall: 6, abbreviate: false }
   if (info.mode === 'per-request') {
-    return `$${info.requestPrice?.toFixed(4)}`
+    return info.requestPrice !== undefined ? formatBillingCurrencyFromUSD(info.requestPrice, opts) : '—'
   }
   if (info.mode === 'per-token') {
     const inputStr =
-      info.inputPrice !== undefined ? `$${info.inputPrice.toFixed(2)}` : '—'
+      info.inputPrice !== undefined ? formatBillingCurrencyFromUSD(info.inputPrice, { ...opts, digitsLarge: 2, digitsSmall: 4 }) : '—'
     const outputStr =
-      info.outputPrice !== undefined ? `$${info.outputPrice.toFixed(2)}` : '—'
+      info.outputPrice !== undefined ? formatBillingCurrencyFromUSD(info.outputPrice, { ...opts, digitsLarge: 2, digitsSmall: 4 }) : '—'
     return `${inputStr} / ${outputStr}`
   }
   return '—'

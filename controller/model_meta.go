@@ -9,6 +9,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -126,6 +127,13 @@ func UpdateModelMeta(c *gin.Context) {
 			return
 		}
 	} else {
+		// Get old model name first
+		var oldModel model.Model
+		if err := model.DB.First(&oldModel, m.Id).Error; err != nil {
+			common.ApiError(c, err)
+			return
+		}
+
 		// 名称冲突检查
 		if dup, err := model.IsModelNameDuplicated(m.Id, m.ModelName); err != nil {
 			common.ApiError(c, err)
@@ -138,6 +146,98 @@ func UpdateModelMeta(c *gin.Context) {
 		if err := m.Update(); err != nil {
 			common.ApiError(c, err)
 			return
+		}
+
+		// If name changed, propagate the change to other tables and settings
+		oldName := oldModel.ModelName
+		newName := m.ModelName
+		if oldName != "" && newName != "" && oldName != newName {
+			// 1. Update channels table
+			var channels []model.Channel
+			if err := model.DB.Find(&channels).Error; err == nil {
+				for _, ch := range channels {
+					modelsChanged := false
+					mappingChanged := false
+
+					// Update models list
+					if ch.Models != "" {
+						parts := strings.Split(ch.Models, ",")
+						for i, part := range parts {
+							if strings.TrimSpace(part) == oldName {
+								parts[i] = newName
+								modelsChanged = true
+							}
+						}
+						if modelsChanged {
+							ch.Models = strings.Join(parts, ",")
+						}
+					}
+
+					// Update model_mapping
+					if ch.ModelMapping != nil && *ch.ModelMapping != "" && *ch.ModelMapping != "{}" {
+						var modelMap map[string]string
+						if err := common.Unmarshal([]byte(*ch.ModelMapping), &modelMap); err == nil {
+							newMap := make(map[string]string)
+							for k, v := range modelMap {
+								newK := k
+								newV := v
+								if k == oldName {
+									newK = newName
+									mappingChanged = true
+								}
+								if v == oldName {
+									newV = newName
+									mappingChanged = true
+								}
+								newMap[newK] = newV
+							}
+							if mappingChanged {
+								if b, err := common.Marshal(newMap); err == nil {
+									jsonStr := string(b)
+									ch.ModelMapping = &jsonStr
+								}
+							}
+						}
+					}
+
+					if modelsChanged || mappingChanged {
+						updates := make(map[string]interface{})
+						if modelsChanged {
+							updates["models"] = ch.Models
+						}
+						if mappingChanged {
+							updates["model_mapping"] = ch.ModelMapping
+						}
+						_ = model.DB.Model(&model.Channel{}).Where("id = ?", ch.Id).Updates(updates).Error
+					}
+				}
+			}
+
+			// 2. Update abilities table
+			_ = model.DB.Model(&model.Ability{}).Where("model = ?", oldName).Update("model", newName).Error
+
+			// 3. Update ratio settings maps (in-memory & in DB options)
+			renameMapKey := func(optionKey string, getCopy func() map[string]float64, updateByJSON func(string) error) {
+				mCopy := getCopy()
+				if val, ok := mCopy[oldName]; ok {
+					delete(mCopy, oldName)
+					mCopy[newName] = val
+					if b, err := common.Marshal(mCopy); err == nil {
+						jsonStr := string(b)
+						_ = model.UpdateOption(optionKey, jsonStr)
+						_ = updateByJSON(jsonStr)
+					}
+				}
+			}
+
+			renameMapKey("ModelRatio", ratio_setting.GetModelRatioCopy, ratio_setting.UpdateModelRatioByJSONString)
+			renameMapKey("ModelPrice", ratio_setting.GetModelPriceCopy, ratio_setting.UpdateModelPriceByJSONString)
+			renameMapKey("CompletionRatio", ratio_setting.GetCompletionRatioCopy, ratio_setting.UpdateCompletionRatioByJSONString)
+			renameMapKey("CacheRatio", ratio_setting.GetCacheRatioCopy, ratio_setting.UpdateCacheRatioByJSONString)
+			renameMapKey("CreateCacheRatio", ratio_setting.GetCreateCacheRatioCopy, ratio_setting.UpdateCreateCacheRatioByJSONString)
+			renameMapKey("ImageRatio", ratio_setting.GetImageRatioCopy, ratio_setting.UpdateImageRatioByJSONString)
+			renameMapKey("AudioRatio", ratio_setting.GetAudioRatioCopy, ratio_setting.UpdateAudioRatioByJSONString)
+			renameMapKey("AudioCompletionRatio", ratio_setting.GetAudioCompletionRatioCopy, ratio_setting.UpdateAudioCompletionRatioByJSONString)
 		}
 	}
 	model.RefreshPricing()

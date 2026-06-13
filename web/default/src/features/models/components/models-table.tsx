@@ -36,6 +36,7 @@ import {
   getSyncStatusOptions,
 } from '../constants'
 import { modelsQueryKeys, vendorsQueryKeys } from '../lib'
+import { usePricingMap } from '../hooks/use-pricing-map'
 import { DataTableBulkActions } from './data-table-bulk-actions'
 import { useModelsColumns } from './models-columns'
 import { useModels } from './models-provider'
@@ -46,6 +47,7 @@ export function ModelsTable() {
   const { t } = useTranslation()
   const { selectedVendor } = useModels()
   const isMobile = useMediaQuery('(max-width: 640px)')
+  const { pricingMap, isLoading: pricingLoading } = usePricingMap()
 
   // Table state
   const [sorting, setSorting] = useState<SortingState>([])
@@ -202,6 +204,10 @@ export function ModelsTable() {
     manualPagination: true,
     manualSorting: true,
     manualFiltering: true,
+    meta: {
+      pricingMap,
+      pricingLoading,
+    },
   })
 
   // Ensure page is in range when total count changes

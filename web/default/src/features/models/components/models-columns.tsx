@@ -40,6 +40,7 @@ import { parseModelTags, formatEndpointsDisplay } from '../lib'
 import type { Model, Vendor } from '../types'
 import { DataTableRowActions } from './data-table-row-actions'
 import { DescriptionCell } from './description-cell'
+import { PricingCell } from './pricing-cell'
 
 /**
  * Render limited items with "and X more" indicator
@@ -277,6 +278,26 @@ export function useModelsColumns(vendors: Vendor[] = []): ColumnDef<Model>[] {
         return value.includes(String(row.getValue(id)))
       },
       size: 150,
+      enableSorting: false,
+    },
+
+    // Pricing column
+    {
+      id: 'pricing',
+      meta: { label: t('Pricing') },
+      header: t('Pricing'),
+      cell: ({ row, table }) => {
+        const model = row.original
+        const meta = table.options.meta as any
+        return (
+          <PricingCell
+            modelName={model.model_name}
+            pricingMap={meta?.pricingMap}
+            isLoading={meta?.pricingLoading}
+          />
+        )
+      },
+      size: 180,
       enableSorting: false,
     },
 

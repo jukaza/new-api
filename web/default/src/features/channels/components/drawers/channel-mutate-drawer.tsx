@@ -157,6 +157,7 @@ import {
 import { ParamOverrideEditorDialog } from '../dialogs/param-override-editor-dialog'
 import { StatusCodeRiskDialog } from '../dialogs/status-code-risk-dialog'
 import { ModelMappingEditor } from '../model-mapping-editor'
+import { ModelPricingSummary } from '../model-pricing-summary'
 import {
   ChannelAdvancedSection,
   ChannelApiAccessSection,
@@ -2222,6 +2223,7 @@ export function ChannelMutateDrawer({
                                 </Alert>
                               )}
                               <FormMessage />
+                              <ModelPricingSummary selectedModels={currentModelsArray} />
                             </FormItem>
                           )}
                         />

@@ -236,32 +236,50 @@ func responsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, re
 
 	logger.LogInfo(c, fmt.Sprintf("Fallback Request JSON: %s", string(jsonData)))
 
-	body, size, closer, err := relaycommon.NewOutboundJSONBody(jsonData)
-	if err != nil {
-		return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
-	}
-	defer closer.Close()
-	jsonData = nil
-	info.UpstreamRequestBodySize = size
-	var requestBody io.Reader = body
-
-	var httpResp *http.Response
-	resp, err := adaptor.DoRequest(c, info, requestBody)
-	if err != nil {
-		return types.NewOpenAIError(err, types.ErrorCodeDoRequestFailed, http.StatusInternalServerError)
-	}
-	if resp == nil {
-		return types.NewOpenAIError(nil, types.ErrorCodeBadResponse, http.StatusInternalServerError)
-	}
+	// Keep savedJsonData for retry on transient upstream errors (e.g. LiteRouter cold-start).
+	savedJsonData := jsonData
 
 	statusCodeMappingStr := c.GetString("status_code_mapping")
 
-	httpResp = resp.(*http.Response)
-	info.IsStream = info.IsStream || strings.HasPrefix(httpResp.Header.Get("Content-Type"), "text/event-stream")
-	if httpResp.StatusCode != http.StatusOK {
-		newApiErr := service.RelayErrorHandler(c.Request.Context(), httpResp, false)
-		service.ResetStatusCode(newApiErr, statusCodeMappingStr)
-		return newApiErr
+	var httpResp *http.Response
+	const maxAttempts = 2
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		body, size, closer, err := relaycommon.NewOutboundJSONBody(savedJsonData)
+		if err != nil {
+			return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
+		}
+		info.UpstreamRequestBodySize = size
+
+		resp, err := adaptor.DoRequest(c, info, body)
+		closer.Close()
+		if err != nil {
+			if attempt < maxAttempts {
+				logger.LogWarn(c, fmt.Sprintf("Responses fallback DoRequest error (attempt %d/%d), retrying: %v", attempt, maxAttempts, err))
+				continue
+			}
+			return types.NewOpenAIError(err, types.ErrorCodeDoRequestFailed, http.StatusInternalServerError)
+		}
+		if resp == nil {
+			if attempt < maxAttempts {
+				logger.LogWarn(c, fmt.Sprintf("Responses fallback nil response (attempt %d/%d), retrying", attempt, maxAttempts))
+				continue
+			}
+			return types.NewOpenAIError(nil, types.ErrorCodeBadResponse, http.StatusInternalServerError)
+		}
+
+		httpResp = resp.(*http.Response)
+		info.IsStream = info.IsStream || strings.HasPrefix(httpResp.Header.Get("Content-Type"), "text/event-stream")
+		if httpResp.StatusCode != http.StatusOK {
+			newApiErr := service.RelayErrorHandler(c.Request.Context(), httpResp, false)
+			// Retry on transient upstream routing errors (e.g. LiteRouter cooldown/cold-start)
+			if attempt < maxAttempts && strings.Contains(newApiErr.Error(), "all active connections failed") {
+				logger.LogWarn(c, fmt.Sprintf("Responses fallback upstream transient error (attempt %d/%d), retrying: %s", attempt, maxAttempts, newApiErr.Error()))
+				continue
+			}
+			service.ResetStatusCode(newApiErr, statusCodeMappingStr)
+			return newApiErr
+		}
+		break // success
 	}
 
 	var usage *dto.Usage
@@ -338,6 +356,373 @@ func handleNonStreamResponsesViaChatCompletions(c *gin.Context, info *relaycommo
 	return usage, nil
 }
 
+type responseStreamState struct {
+	responseId         string
+	createdAt          int
+	modelName          string
+	seq                int
+	started            bool
+	inThinking         bool
+	// Text output tracking
+	msgItemAdded       map[int]bool
+	msgContentAdded    map[int]bool
+	msgTextBuf         map[int]string
+	msgItemDone        map[int]bool
+	// Reasoning tracking
+	reasoningId        string
+	reasoningIndex     int
+	reasoningBuf       strings.Builder
+	reasoningPartAdded bool
+	reasoningDone      bool
+	// Tool calls tracking
+	funcCallIds        map[int]string
+	funcArgsBuf        map[int]string
+	funcNames          map[int]string
+	funcItemDone       map[int]bool
+	funcArgsDone       map[int]bool
+	completedSent      bool
+}
+
+func (s *responseStreamState) startReasoning(sendEvent func(string, dto.ResponsesStreamResponse), idx int) {
+	if s.reasoningId == "" {
+		s.reasoningId = fmt.Sprintf("rs_%s_%d", s.responseId, idx)
+		s.reasoningIndex = idx
+
+		sendEvent("response.output_item.added", dto.ResponsesStreamResponse{
+			OutputIndex: common.GetPointer(idx),
+			Item: &dto.ResponsesOutput{
+				ID:      s.reasoningId,
+				Type:    "reasoning",
+				Summary: []dto.ResponsesReasoningSummaryPart{},
+			},
+		})
+
+		sendEvent("response.reasoning_summary_part.added", dto.ResponsesStreamResponse{
+			ItemID:       s.reasoningId,
+			OutputIndex:  common.GetPointer(idx),
+			SummaryIndex: common.GetPointer(0),
+			Part: dto.ResponsesReasoningSummaryPart{
+				Type: "summary_text",
+				Text: "",
+			},
+		})
+		s.reasoningPartAdded = true
+	}
+}
+
+func (s *responseStreamState) emitReasoningDelta(sendEvent func(string, dto.ResponsesStreamResponse), text string) {
+	if text == "" {
+		return
+	}
+	s.reasoningBuf.WriteString(text)
+	sendEvent("response.reasoning_summary_text.delta", dto.ResponsesStreamResponse{
+		ItemID:       s.reasoningId,
+		OutputIndex:  common.GetPointer(s.reasoningIndex),
+		SummaryIndex: common.GetPointer(0),
+		Delta:        text,
+	})
+}
+
+func (s *responseStreamState) closeReasoning(sendEvent func(string, dto.ResponsesStreamResponse)) {
+	if s.reasoningId != "" && !s.reasoningDone {
+		s.reasoningDone = true
+
+		sendEvent("response.reasoning_summary_text.done", dto.ResponsesStreamResponse{
+			ItemID:       s.reasoningId,
+			OutputIndex:  common.GetPointer(s.reasoningIndex),
+			SummaryIndex: common.GetPointer(0),
+			Text:         s.reasoningBuf.String(),
+		})
+
+		sendEvent("response.reasoning_summary_part.done", dto.ResponsesStreamResponse{
+			ItemID:       s.reasoningId,
+			OutputIndex:  common.GetPointer(s.reasoningIndex),
+			SummaryIndex: common.GetPointer(0),
+			Part: dto.ResponsesReasoningSummaryPart{
+				Type: "summary_text",
+				Text: s.reasoningBuf.String(),
+			},
+		})
+
+		sendEvent("response.output_item.done", dto.ResponsesStreamResponse{
+			OutputIndex: common.GetPointer(s.reasoningIndex),
+			Item: &dto.ResponsesOutput{
+				ID:   s.reasoningId,
+				Type: "reasoning",
+				Summary: []dto.ResponsesReasoningSummaryPart{
+					{
+						Type: "summary_text",
+						Text: s.reasoningBuf.String(),
+					},
+				},
+			},
+		})
+	}
+}
+
+func (s *responseStreamState) emitTextContent(sendEvent func(string, dto.ResponsesStreamResponse), idx int, content string) {
+	if !s.msgItemAdded[idx] {
+		s.msgItemAdded[idx] = true
+		msgId := fmt.Sprintf("msg_%s_%d", s.responseId, idx)
+
+		sendEvent("response.output_item.added", dto.ResponsesStreamResponse{
+			OutputIndex: common.GetPointer(idx),
+			Item: &dto.ResponsesOutput{
+				ID:      msgId,
+				Type:    "message",
+				Content: []dto.ResponsesOutputContent{},
+				Role:    "assistant",
+			},
+		})
+	}
+
+	if !s.msgContentAdded[idx] {
+		s.msgContentAdded[idx] = true
+		msgId := fmt.Sprintf("msg_%s_%d", s.responseId, idx)
+
+		sendEvent("response.content_part.added", dto.ResponsesStreamResponse{
+			ItemID:       msgId,
+			OutputIndex:  common.GetPointer(idx),
+			ContentIndex: common.GetPointer(0),
+			Part: map[string]any{
+				"type":        "output_text",
+				"annotations": []any{},
+				"logprobs":    []any{},
+				"text":        "",
+			},
+		})
+	}
+
+	msgId := fmt.Sprintf("msg_%s_%d", s.responseId, idx)
+	sendEvent("response.output_text.delta", dto.ResponsesStreamResponse{
+		ItemID:       msgId,
+		OutputIndex:  common.GetPointer(idx),
+		ContentIndex: common.GetPointer(0),
+		Delta:        content,
+		Logprobs:     []any{},
+	})
+
+	s.msgTextBuf[idx] = s.msgTextBuf[idx] + content
+}
+
+func (s *responseStreamState) closeMessage(sendEvent func(string, dto.ResponsesStreamResponse), idx int) {
+	if s.msgItemAdded[idx] && !s.msgItemDone[idx] {
+		s.msgItemDone[idx] = true
+		fullText := s.msgTextBuf[idx]
+		msgId := fmt.Sprintf("msg_%s_%d", s.responseId, idx)
+
+		sendEvent("response.output_text.done", dto.ResponsesStreamResponse{
+			ItemID:       msgId,
+			OutputIndex:  common.GetPointer(idx),
+			ContentIndex: common.GetPointer(0),
+			Text:         fullText,
+			Logprobs:     []any{},
+		})
+
+		sendEvent("response.content_part.done", dto.ResponsesStreamResponse{
+			ItemID:       msgId,
+			OutputIndex:  common.GetPointer(idx),
+			ContentIndex: common.GetPointer(0),
+			Part: map[string]any{
+				"type":        "output_text",
+				"annotations": []any{},
+				"logprobs":    []any{},
+				"text":        fullText,
+			},
+		})
+
+		sendEvent("response.output_item.done", dto.ResponsesStreamResponse{
+			OutputIndex: common.GetPointer(idx),
+			Item: &dto.ResponsesOutput{
+				ID:     msgId,
+				Type:   "message",
+				Role:   "assistant",
+				Status: "completed",
+				Content: []dto.ResponsesOutputContent{
+					{
+						Type:        "output_text",
+						Text:        fullText,
+						Annotations: []any{},
+					},
+				},
+			},
+		})
+	}
+}
+
+func (s *responseStreamState) emitToolCall(sendEvent func(string, dto.ResponsesStreamResponse), tc dto.ToolCallResponse) {
+	tcIdx := 0
+	if tc.Index != nil {
+		tcIdx = *tc.Index
+	}
+	newCallId := tc.ID
+	funcName := tc.Function.Name
+
+	if funcName != "" {
+		s.funcNames[tcIdx] = funcName
+	}
+
+	if s.funcCallIds[tcIdx] == "" && newCallId != "" {
+		s.funcCallIds[tcIdx] = newCallId
+
+		sendEvent("response.output_item.added", dto.ResponsesStreamResponse{
+			OutputIndex: common.GetPointer(tcIdx),
+			Item: &dto.ResponsesOutput{
+				ID:        fmt.Sprintf("fc_%s", newCallId),
+				Type:      "function_call",
+				CallId:    newCallId,
+				Name:      s.funcNames[tcIdx],
+				Status:    "in_progress",
+				Arguments: json.RawMessage(`""`),
+			},
+		})
+	}
+
+	if tc.Function.Arguments != "" {
+		refCallId := s.funcCallIds[tcIdx]
+		if refCallId == "" {
+			refCallId = newCallId
+		}
+		if refCallId != "" {
+			sendEvent("response.function_call_arguments.delta", dto.ResponsesStreamResponse{
+				ItemID:      fmt.Sprintf("fc_%s", refCallId),
+				OutputIndex: common.GetPointer(tcIdx),
+				Delta:       tc.Function.Arguments,
+			})
+		}
+		s.funcArgsBuf[tcIdx] = s.funcArgsBuf[tcIdx] + tc.Function.Arguments
+	}
+}
+
+func (s *responseStreamState) closeToolCall(sendEvent func(string, dto.ResponsesStreamResponse), idx int) {
+	callId := s.funcCallIds[idx]
+	if callId != "" && !s.funcItemDone[idx] {
+		args := s.funcArgsBuf[idx]
+		if args == "" {
+			args = "{}"
+		}
+
+		sendEvent("response.function_call_arguments.done", dto.ResponsesStreamResponse{
+			ItemID:      fmt.Sprintf("fc_%s", callId),
+			OutputIndex: common.GetPointer(idx),
+			Arguments:   args,
+		})
+
+		sendEvent("response.output_item.done", dto.ResponsesStreamResponse{
+			OutputIndex: common.GetPointer(idx),
+			Item: &dto.ResponsesOutput{
+				ID:        fmt.Sprintf("fc_%s", callId),
+				Type:      "function_call",
+				Status:    "completed",
+				CallId:    callId,
+				Name:      s.funcNames[idx],
+				Arguments: json.RawMessage([]byte(args)),
+			},
+		})
+
+		s.funcItemDone[idx] = true
+		s.funcArgsDone[idx] = true
+	}
+}
+
+func (s *responseStreamState) sendCompleted(sendEvent func(string, dto.ResponsesStreamResponse), usage *dto.Usage) {
+	if !s.completedSent {
+		s.completedSent = true
+
+		var outputs []dto.ResponsesOutput
+		if s.reasoningId != "" {
+			outputs = append(outputs, dto.ResponsesOutput{
+				Type: "reasoning",
+				ID:   s.reasoningId,
+				Summary: []dto.ResponsesReasoningSummaryPart{
+					{
+						Type: "summary_text",
+						Text: s.reasoningBuf.String(),
+					},
+				},
+			})
+		}
+
+		maxMsgIdx := -1
+		for idx := range s.msgItemAdded {
+			if idx > maxMsgIdx {
+				maxMsgIdx = idx
+			}
+		}
+		for idx := 0; idx <= maxMsgIdx; idx++ {
+			if s.msgItemAdded[idx] {
+				outputs = append(outputs, dto.ResponsesOutput{
+					Type:   "message",
+					ID:     fmt.Sprintf("msg_%s_%d", s.responseId, idx),
+					Status: "completed",
+					Role:   "assistant",
+					Content: []dto.ResponsesOutputContent{
+						{
+							Type:        "output_text",
+							Text:        s.msgTextBuf[idx],
+							Annotations: []any{},
+						},
+					},
+				})
+			}
+		}
+
+		maxFuncIdx := -1
+		for idx := range s.funcCallIds {
+			if idx > maxFuncIdx {
+				maxFuncIdx = idx
+			}
+		}
+		for idx := 0; idx <= maxFuncIdx; idx++ {
+			callId := s.funcCallIds[idx]
+			if callId != "" {
+				args := s.funcArgsBuf[idx]
+				if args == "" {
+					args = "{}"
+				}
+				outputs = append(outputs, dto.ResponsesOutput{
+					Type:      "function_call",
+					ID:        fmt.Sprintf("fc_%s", callId),
+					Status:    "completed",
+					CallId:    callId,
+					Arguments: json.RawMessage([]byte(args)),
+					Name:      s.funcNames[idx],
+				})
+			}
+		}
+
+		sendEvent("response.completed", dto.ResponsesStreamResponse{
+			Response: &dto.OpenAIResponsesResponse{
+				ID:        s.responseId,
+				Object:    "response",
+				CreatedAt: s.createdAt,
+				Status:    json.RawMessage(`"completed"`),
+				Model:     s.modelName,
+				Output:    outputs,
+				Usage: &dto.Usage{
+					InputTokens:  usage.PromptTokens,
+					OutputTokens: usage.CompletionTokens,
+					TotalTokens:  usage.TotalTokens,
+				},
+			},
+		})
+	}
+}
+
+func (s *responseStreamState) flushState(sendEvent func(string, dto.ResponsesStreamResponse), usage *dto.Usage) {
+	if s.completedSent {
+		return
+	}
+	for idx := range s.msgItemAdded {
+		s.closeMessage(sendEvent, idx)
+	}
+	s.closeReasoning(sendEvent)
+	for idx := range s.funcCallIds {
+		s.closeToolCall(sendEvent, idx)
+	}
+	s.sendCompleted(sendEvent, usage)
+}
+
 func handleStreamResponsesViaChatCompletions(c *gin.Context, info *relaycommon.RelayInfo, httpResp *http.Response) (*dto.Usage, *types.NewAPIError) {
 	defer service.CloseResponseBodyGracefully(httpResp)
 
@@ -349,18 +734,34 @@ func handleStreamResponsesViaChatCompletions(c *gin.Context, info *relaycommon.R
 		chatRespId = helper.GetResponseID(c)
 		createdAt  = int(time.Now().Unix())
 		modelName  = info.OriginModelName
-
-		started          = false
-		itemAdded        = false
-		contentPartAdded = false
-		accumulatedText  strings.Builder
-		toolCallsMap     = make(map[string]string) // tc.ID -> accumulated arguments
 	)
 
 	scanner.Buffer(make([]byte, helper.InitialScannerBufferSize), helper.DefaultMaxScannerBufferSize)
 	scanner.Split(bufio.ScanLines)
 
-	sendEvent := func(evtType string, payload any) {
+	state := &responseStreamState{
+		responseId:      chatRespId,
+		createdAt:       createdAt,
+		modelName:       modelName,
+		msgItemAdded:    make(map[int]bool),
+		msgContentAdded: make(map[int]bool),
+		msgTextBuf:      make(map[int]string),
+		msgItemDone:     make(map[int]bool),
+		funcCallIds:     make(map[int]string),
+		funcArgsBuf:     make(map[int]string),
+		funcNames:       make(map[int]string),
+		funcItemDone:    make(map[int]bool),
+		funcArgsDone:    make(map[int]bool),
+	}
+
+	nextSeq := func() int {
+		state.seq++
+		return state.seq
+	}
+
+	sendEvent := func(evtType string, payload dto.ResponsesStreamResponse) {
+		payload.Type = evtType
+		payload.SequenceNumber = nextSeq()
 		jsonData, err := common.Marshal(payload)
 		if err != nil {
 			logger.LogError(c, "failed to marshal response stream event: "+err.Error())
@@ -395,13 +796,13 @@ func handleStreamResponsesViaChatCompletions(c *gin.Context, info *relaycommon.R
 		}
 
 		if chunk.Id != "" {
-			chatRespId = chunk.Id
+			state.responseId = chunk.Id
 		}
 		if chunk.Created != 0 {
-			createdAt = int(chunk.Created)
+			state.createdAt = int(chunk.Created)
 		}
 		if chunk.Model != "" {
-			modelName = chunk.Model
+			state.modelName = chunk.Model
 		}
 		if chunk.Usage != nil {
 			if chunk.Usage.PromptTokens != 0 {
@@ -415,274 +816,126 @@ func handleStreamResponsesViaChatCompletions(c *gin.Context, info *relaycommon.R
 			}
 		}
 
-		if !started {
-			started = true
+		if !state.started {
+			state.started = true
 
 			// 1. response.created
 			sendEvent("response.created", dto.ResponsesStreamResponse{
-				Type: "response.created",
 				Response: &dto.OpenAIResponsesResponse{
-					ID:        chatRespId,
+					ID:        state.responseId,
 					Object:    "response",
-					CreatedAt: createdAt,
+					CreatedAt: state.createdAt,
 					Status:    json.RawMessage(`"in_progress"`),
-					Model:     modelName,
+					Model:     state.modelName,
 				},
 			})
 
 			// 2. response.in_progress
 			sendEvent("response.in_progress", dto.ResponsesStreamResponse{
-				Type: "response.in_progress",
 				Response: &dto.OpenAIResponsesResponse{
-					ID:        chatRespId,
+					ID:        state.responseId,
 					Object:    "response",
-					CreatedAt: createdAt,
+					CreatedAt: state.createdAt,
 					Status:    json.RawMessage(`"in_progress"`),
-					Model:     modelName,
+					Model:     state.modelName,
 				},
 			})
 		}
 
 		if len(chunk.Choices) > 0 {
 			choice := chunk.Choices[0]
-
-			// Handle content delta
-			content := choice.Delta.GetContentString()
-			if content != "" {
-				if !itemAdded {
-					itemAdded = true
-					sendEvent("response.output_item.added", dto.ResponsesStreamResponse{
-						Type:        "response.output_item.added",
-						OutputIndex: common.GetPointer(0),
-						Item: &dto.ResponsesOutput{
-							ID:      "msg_" + chatRespId,
-							Type:    "message",
-							Role:    "assistant",
-							Status:  "in_progress",
-							Content: []dto.ResponsesOutputContent{},
-						},
-					})
-				}
-				if !contentPartAdded {
-					contentPartAdded = true
-					sendEvent("response.content_part.added", dto.ResponsesStreamResponse{
-						Type:         "response.content_part.added",
-						ItemID:       "msg_" + chatRespId,
-						OutputIndex:  common.GetPointer(0),
-						ContentIndex: common.GetPointer(0),
-						Part: map[string]any{
-							"type":        "output_text",
-							"annotations": []any{},
-							"logprobs":    []any{},
-							"text":        "",
-						},
-					})
-				}
-
-				accumulatedText.WriteString(content)
-				sendEvent("response.output_text.delta", dto.ResponsesStreamResponse{
-					Type:         "response.output_text.delta",
-					Delta:        content,
-					OutputIndex:  common.GetPointer(0),
-					ContentIndex: common.GetPointer(0),
-					ItemID:       "msg_" + chatRespId,
-				})
-			}
+			idx := choice.Index
 
 			// Handle reasoning content delta
 			reasoningContent := choice.Delta.GetReasoningContent()
 			if reasoningContent != "" {
-				if !itemAdded {
-					itemAdded = true
-					sendEvent("response.output_item.added", dto.ResponsesStreamResponse{
-						Type:        "response.output_item.added",
-						OutputIndex: common.GetPointer(0),
-						Item: &dto.ResponsesOutput{
-							ID:      "msg_" + chatRespId,
-							Type:    "message",
-							Role:    "assistant",
-							Status:  "in_progress",
-							Content: []dto.ResponsesOutputContent{},
-						},
-					})
-				}
-				if !contentPartAdded {
-					contentPartAdded = true
-					sendEvent("response.content_part.added", dto.ResponsesStreamResponse{
-						Type:         "response.content_part.added",
-						ItemID:       "msg_" + chatRespId,
-						OutputIndex:  common.GetPointer(0),
-						ContentIndex: common.GetPointer(0),
-						Part: map[string]any{
-							"type":        "output_text",
-							"annotations": []any{},
-							"logprobs":    []any{},
-							"text":        "",
-						},
-					})
+				state.startReasoning(sendEvent, idx)
+				state.emitReasoningDelta(sendEvent, reasoningContent)
+			}
+
+			// Handle text content delta
+			content := choice.Delta.GetContentString()
+			if content != "" {
+				if strings.Contains(content, "<think>") {
+					state.inThinking = true
+					content = strings.Replace(content, "<think>", "", 1)
+					state.startReasoning(sendEvent, idx)
 				}
 
-				accumulatedText.WriteString(reasoningContent)
-				sendEvent("response.output_text.delta", dto.ResponsesStreamResponse{
-					Type:         "response.output_text.delta",
-					Delta:        reasoningContent,
-					OutputIndex:  common.GetPointer(0),
-					ContentIndex: common.GetPointer(0),
-					ItemID:       "msg_" + chatRespId,
-				})
+				if strings.Contains(content, "</think>") {
+					parts := strings.SplitN(content, "</think>", 2)
+					thinkPart := parts[0]
+					textPart := ""
+					if len(parts) > 1 {
+						textPart = parts[1]
+					}
+					if thinkPart != "" {
+						state.emitReasoningDelta(sendEvent, thinkPart)
+					}
+					state.closeReasoning(sendEvent)
+					state.inThinking = false
+					content = textPart
+				}
+
+				if state.inThinking && content != "" {
+					state.emitReasoningDelta(sendEvent, content)
+					continue
+				}
+
+				if content != "" {
+					state.emitTextContent(sendEvent, idx, content)
+				}
 			}
 
 			// Handle tool calls delta
-			for _, tc := range choice.Delta.ToolCalls {
-				tcId := tc.ID
-				if tcId == "" {
-					tcId = fmt.Sprintf("call_%s_0", chatRespId)
+			if len(choice.Delta.ToolCalls) > 0 {
+				state.closeMessage(sendEvent, idx)
+				for _, tc := range choice.Delta.ToolCalls {
+					state.emitToolCall(sendEvent, tc)
 				}
+			}
 
-				if _, ok := toolCallsMap[tcId]; !ok {
-					sendEvent("response.output_item.added", dto.ResponsesStreamResponse{
-						Type:        "response.output_item.added",
-						OutputIndex: common.GetPointer(0),
-						Item: &dto.ResponsesOutput{
-							ID:        "fc_" + tcId,
-							Type:      "function_call",
-							CallId:    tcId,
-							Name:      tc.Function.Name,
-							Status:    "in_progress",
-							Arguments: json.RawMessage(`""`),
-						},
-					})
-				}
-
-				toolCallsMap[tcId] = toolCallsMap[tcId] + tc.Function.Arguments
-
-				sendEvent("response.function_call_arguments.delta", dto.ResponsesStreamResponse{
-					Type:        "response.function_call_arguments.delta",
-					Delta:       tc.Function.Arguments,
-					ItemID:      "fc_" + tcId,
-					OutputIndex: common.GetPointer(0),
-				})
+			// Handle finish_reason
+			if choice.FinishReason != nil && *choice.FinishReason != "" {
+				state.flushState(sendEvent, usage)
 			}
 		}
 	}
 
-	if !started {
-		started = true
+	if !state.started {
+		state.started = true
 		sendEvent("response.created", dto.ResponsesStreamResponse{
-			Type: "response.created",
 			Response: &dto.OpenAIResponsesResponse{
-				ID:        chatRespId,
+				ID:        state.responseId,
 				Object:    "response",
-				CreatedAt: createdAt,
+				CreatedAt: state.createdAt,
 				Status:    json.RawMessage(`"in_progress"`),
-				Model:     modelName,
+				Model:     state.modelName,
 			},
 		})
 		sendEvent("response.in_progress", dto.ResponsesStreamResponse{
-			Type: "response.in_progress",
 			Response: &dto.OpenAIResponsesResponse{
-				ID:        chatRespId,
+				ID:        state.responseId,
 				Object:    "response",
-				CreatedAt: createdAt,
+				CreatedAt: state.createdAt,
 				Status:    json.RawMessage(`"in_progress"`),
-				Model:     modelName,
+				Model:     state.modelName,
 			},
 		})
 	}
 
-	// 3. Send done events for text output
-	if itemAdded || (accumulatedText.Len() > 0 || len(toolCallsMap) == 0) {
-		if !itemAdded {
-			itemAdded = true
-			sendEvent("response.output_item.added", dto.ResponsesStreamResponse{
-				Type:        "response.output_item.added",
-				OutputIndex: common.GetPointer(0),
-				Item: &dto.ResponsesOutput{
-					ID:      "msg_" + chatRespId,
-					Type:    "message",
-					Role:    "assistant",
-					Status:  "in_progress",
-					Content: []dto.ResponsesOutputContent{},
-				},
-			})
-			sendEvent("response.content_part.added", dto.ResponsesStreamResponse{
-				Type:         "response.content_part.added",
-				ItemID:       "msg_" + chatRespId,
-				OutputIndex:  common.GetPointer(0),
-				ContentIndex: common.GetPointer(0),
-				Part: map[string]any{
-					"type":        "output_text",
-					"annotations": []any{},
-					"logprobs":    []any{},
-					"text":        "",
-				},
-			})
-		}
-
-		sendEvent("response.output_text.done", map[string]any{
-			"type":          "response.output_text.done",
-			"item_id":       "msg_" + chatRespId,
-			"output_index":  0,
-			"content_index": 0,
-			"text":          accumulatedText.String(),
-			"logprobs":      []any{},
-		})
-
-		sendEvent("response.content_part.done", map[string]any{
-			"type":          "response.content_part.done",
-			"item_id":       "msg_" + chatRespId,
-			"output_index":  0,
-			"content_index": 0,
-			"part": map[string]any{
-				"type":        "output_text",
-				"annotations": []any{},
-				"logprobs":    []any{},
-				"text":        accumulatedText.String(),
-			},
-		})
-
-		sendEvent("response.output_item.done", dto.ResponsesStreamResponse{
-			Type:        "response.output_item.done",
-			OutputIndex: common.GetPointer(0),
-			Item: &dto.ResponsesOutput{
-				Type:   "message",
-				ID:     "msg_" + chatRespId,
-				Status: "completed",
-				Role:   "assistant",
-				Content: []dto.ResponsesOutputContent{
-					{
-						Type:        "output_text",
-						Text:        accumulatedText.String(),
-						Annotations: []any{},
-					},
-				},
-			},
-		})
-	}
-
-	// Send done events for tool calls
-	for tcId, tcArgs := range toolCallsMap {
-		sendEvent("response.function_call_arguments.done", map[string]any{
-			"type":         "response.function_call_arguments.done",
-			"item_id":      "fc_" + tcId,
-			"output_index": 0,
-			"arguments":    tcArgs,
-		})
-
-		sendEvent("response.output_item.done", dto.ResponsesStreamResponse{
-			Type:        "response.output_item.done",
-			OutputIndex: common.GetPointer(0),
-			Item: &dto.ResponsesOutput{
-				Type:      "function_call",
-				ID:        "fc_" + tcId,
-				Status:    "completed",
-				CallId:    tcId,
-				Arguments: json.RawMessage(tcArgs),
-			},
-		})
-	}
+	state.flushState(sendEvent, usage)
 
 	if usage.CompletionTokens == 0 {
+		var accumulatedText strings.Builder
+		for _, v := range state.msgTextBuf {
+			accumulatedText.WriteString(v)
+		}
+		for _, v := range state.funcArgsBuf {
+			accumulatedText.WriteString(v)
+		}
+		accumulatedText.WriteString(state.reasoningBuf.String())
+
 		tempStr := accumulatedText.String()
 		if len(tempStr) > 0 {
 			completionTokens := service.CountTextToken(tempStr, info.UpstreamModelName)
@@ -693,50 +946,6 @@ func handleStreamResponsesViaChatCompletions(c *gin.Context, info *relaycommon.R
 		usage.PromptTokens = info.GetEstimatePromptTokens()
 	}
 	usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
-
-	// 4. Send response.completed
-	var outputs []dto.ResponsesOutput
-	if accumulatedText.Len() > 0 {
-		outputs = append(outputs, dto.ResponsesOutput{
-			Type:   "message",
-			ID:     "msg_" + chatRespId,
-			Status: "completed",
-			Role:   "assistant",
-			Content: []dto.ResponsesOutputContent{
-				{
-					Type:        "output_text",
-					Text:        accumulatedText.String(),
-					Annotations: []any{},
-				},
-			},
-		})
-	}
-	for tcId, tcArgs := range toolCallsMap {
-		outputs = append(outputs, dto.ResponsesOutput{
-			Type:      "function_call",
-			ID:        "fc_" + tcId,
-			Status:    "completed",
-			CallId:    tcId,
-			Arguments: json.RawMessage(tcArgs),
-		})
-	}
-
-	sendEvent("response.completed", dto.ResponsesStreamResponse{
-		Type: "response.completed",
-		Response: &dto.OpenAIResponsesResponse{
-			ID:        chatRespId,
-			Object:    "response",
-			CreatedAt: createdAt,
-			Status:    json.RawMessage(`"completed"`),
-			Model:     modelName,
-			Output:    outputs,
-			Usage: &dto.Usage{
-				InputTokens:  usage.PromptTokens,
-				OutputTokens: usage.CompletionTokens,
-				TotalTokens:  usage.TotalTokens,
-			},
-		},
-	})
 
 	// 5. Send [DONE]
 	c.Render(-1, common.CustomEvent{Data: "data: [DONE]"})
@@ -750,4 +959,3 @@ func handleStreamResponsesViaChatCompletions(c *gin.Context, info *relaycommon.R
 
 	return usage, nil
 }
-

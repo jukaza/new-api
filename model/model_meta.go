@@ -42,6 +42,8 @@ type Model struct {
 
 	MatchedModels []string `json:"matched_models,omitempty" gorm:"-"`
 	MatchedCount  int      `json:"matched_count,omitempty" gorm:"-"`
+
+	ChannelIDs *[]int `json:"channel_ids,omitempty" gorm:"-"`
 }
 
 func (mi *Model) Insert() error {

@@ -21,7 +21,8 @@ import * as z from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, Loader2 } from 'lucide-react'
+import { ChevronDown, Loader2, Info } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -84,7 +85,17 @@ import { getNameRuleOptions, ENDPOINT_TEMPLATES } from '../../constants'
 import { modelsQueryKeys, vendorsQueryKeys, parseModelTags, POPULAR_ICONS } from '../../lib'
 import type { Model } from '../../types'
 import { getLobeIcon } from '@/lib/lobe-icon'
-import { Combobox } from '@/components/ui/combobox'
+import {
+  Combobox,
+  ComboboxChips,
+  ComboboxChip,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxList,
+  ComboboxItem,
+  ComboboxEmpty,
+} from '@/components/ui/combobox'
+import { getChannels } from '@/features/channels/api'
 
 // Extended schema for ratio configuration (internal form state only)
 const extendedModelFormSchema = z.object({
@@ -105,6 +116,7 @@ const extendedModelFormSchema = z.object({
   imageRatio: z.string().optional(),
   audioRatio: z.string().optional(),
   audioCompletionRatio: z.string().optional(),
+  channel_ids: z.array(z.number()).optional(),
 })
 
 type ExtendedModelFormValues = z.infer<typeof extendedModelFormSchema>
@@ -142,6 +154,15 @@ export function ModelMutateDrawer({
   })
 
   const vendors = vendorsData?.data?.items || []
+
+  // Fetch channels for channel assignment feature
+  const { data: channelsResponse } = useQuery({
+    queryKey: ['channels', 'list-all'],
+    queryFn: () => getChannels({ page_size: 1000 }),
+    enabled: open,
+  })
+
+  const channels = channelsResponse?.data?.items || []
 
   // Fetch model detail if editing
   const { data: modelData } = useQuery({
@@ -262,7 +283,7 @@ export function ModelMutateDrawer({
 
   // Load model data for editing and ratio configuration
   useEffect(() => {
-    if (open && isEditing && modelData?.data) {
+    if (open && isEditing && modelData?.data && channelsResponse?.data) {
       const model = modelData.data
       setOldModelName(model.model_name)
 
@@ -285,6 +306,7 @@ export function ModelMutateDrawer({
         imageRatio: '',
         audioRatio: '',
         audioCompletionRatio: '',
+        channel_ids: channels.filter(c => c.models?.split(',').map(s => s.trim()).includes(model.model_name)).map(c => c.id),
       }
 
       // Parse ratio configurations from system settings if available
@@ -389,9 +411,10 @@ export function ModelMutateDrawer({
         imageRatio: '',
         audioRatio: '',
         audioCompletionRatio: '',
+        channel_ids: [],
       })
     }
-  }, [open, isEditing, modelData, currentRow, form, modelSettings])
+  }, [open, isEditing, modelData, currentRow, form, modelSettings, channelsResponse])
 
   const onSubmit = useCallback(
     async (values: ExtendedModelFormValues): Promise<void> => {
@@ -664,6 +687,14 @@ export function ModelMutateDrawer({
                 {t('Basic Information')}
               </h3>
 
+              <Alert className="mb-2 bg-blue-50/50 text-blue-900 border-blue-200 dark:bg-blue-950/50 dark:text-blue-200 dark:border-blue-900">
+                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertTitle className="text-blue-700 dark:text-blue-300 font-semibold">{t('Auto-Routing Mechanism')}</AlertTitle>
+                <AlertDescription className="text-xs mt-1 leading-relaxed">
+                  {t('Models are automatically routed to Channels based on the exact')} <strong>{t('Model Name')}</strong>. {t('The Vendor selected below is purely for UI categorization (logo) and does not affect API routing.')}
+                </AlertDescription>
+              </Alert>
+
               <FormField
                 control={form.control}
                 name='model_name'
@@ -774,6 +805,52 @@ export function ModelMutateDrawer({
                         </SelectGroup>
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='channel_ids'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Selected Channels')}</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        multiple
+                        value={field.value || []}
+                        onValueChange={(val) => field.onChange(val)}
+                      >
+                        <ComboboxChips>
+                          {(field.value || []).map((id: number) => {
+                            const channel = channels.find((c) => c.id === id)
+                            return (
+                              <ComboboxChip key={id} value={id}>
+                                {channel ? channel.name : id}
+                              </ComboboxChip>
+                            )
+                          })}
+                          <ComboboxChipsInput placeholder={t('Select channels...')} />
+                        </ComboboxChips>
+                        <ComboboxContent>
+                          <ComboboxList>
+                            {channels.length === 0 ? (
+                              <ComboboxEmpty>{t('No channels found')}</ComboboxEmpty>
+                            ) : (
+                              channels.map((channel) => (
+                                <ComboboxItem key={channel.id} value={channel.id}>
+                                  {channel.name}
+                                </ComboboxItem>
+                              ))
+                            )}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
+                    </FormControl>
+                    <FormDescription>
+                      {t('Explicitly assign this model to the selected channels. This will automatically update the models list inside those channels.')}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

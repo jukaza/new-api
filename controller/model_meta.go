@@ -102,6 +102,10 @@ func CreateModelMeta(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+
+	// Sync explicit channel bindings if provided
+	_ = syncModelChannels(m.ModelName, m.ChannelIDs)
+
 	model.RefreshPricing()
 	common.ApiSuccess(c, &m)
 }
@@ -239,6 +243,9 @@ func UpdateModelMeta(c *gin.Context) {
 			renameMapKey("AudioRatio", ratio_setting.GetAudioRatioCopy, ratio_setting.UpdateAudioRatioByJSONString)
 			renameMapKey("AudioCompletionRatio", ratio_setting.GetAudioCompletionRatioCopy, ratio_setting.UpdateAudioCompletionRatioByJSONString)
 		}
+
+		// Sync explicit channel bindings if provided
+		_ = syncModelChannels(m.ModelName, m.ChannelIDs)
 	}
 	model.RefreshPricing()
 	common.ApiSuccess(c, &m)
@@ -258,6 +265,72 @@ func DeleteModelMeta(c *gin.Context) {
 	}
 	model.RefreshPricing()
 	common.ApiSuccess(c, nil)
+}
+
+func syncModelChannels(modelName string, channelIDs *[]int) error {
+	if channelIDs == nil {
+		return nil
+	}
+
+	var channels []model.Channel
+	if err := model.DB.Find(&channels).Error; err != nil {
+		return err
+	}
+
+	selectedMap := make(map[int]bool)
+	for _, id := range *channelIDs {
+		selectedMap[id] = true
+	}
+
+	anyChanged := false
+	for _, ch := range channels {
+		modelsList := make([]string, 0)
+		if ch.Models != "" {
+			parts := strings.Split(ch.Models, ",")
+			for _, part := range parts {
+				if strings.TrimSpace(part) != "" {
+					modelsList = append(modelsList, strings.TrimSpace(part))
+				}
+			}
+		}
+
+		contains := false
+		for _, m := range modelsList {
+			if m == modelName {
+				contains = true
+				break
+			}
+		}
+
+		shouldContain := selectedMap[ch.Id]
+		changed := false
+
+		if shouldContain && !contains {
+			modelsList = append(modelsList, modelName)
+			changed = true
+		} else if !shouldContain && contains {
+			var newModelsList []string
+			for _, m := range modelsList {
+				if m != modelName {
+					newModelsList = append(newModelsList, m)
+				}
+			}
+			modelsList = newModelsList
+			changed = true
+		}
+
+		if changed {
+			newModelsStr := strings.Join(modelsList, ",")
+			_ = model.DB.Model(&model.Channel{}).Where("id = ?", ch.Id).UpdateColumn("models", newModelsStr).Error
+			anyChanged = true
+		}
+	}
+
+	if anyChanged {
+		model.SyncModelsFromChannels(model.DB)
+	}
+
+	return nil
 }
 
 // enrichModels 批量填充附加信息：端点、渠道、分组、计费类型，避免 N+1 查询

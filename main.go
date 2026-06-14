@@ -212,10 +212,39 @@ func main() {
 	// Log startup success message
 	common.LogStartupSuccess(startTime, port)
 
-	err = server.Run(":" + port)
+	err = http.ListenAndServe(":" + port, &PathNormalizer{handler: server})
 	if err != nil {
 		common.FatalLog("failed to start HTTP server: " + err.Error())
 	}
+}
+
+type PathNormalizer struct {
+	handler http.Handler
+}
+
+func (h *PathNormalizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	originalPath := r.URL.Path
+	
+	// Normalize duplicated /v1
+	for strings.HasPrefix(r.URL.Path, "/v1/v1/") {
+		r.URL.Path = "/v1/" + strings.TrimPrefix(r.URL.Path, "/v1/v1/")
+	}
+	if r.URL.Path == "/v1/v1" {
+		r.URL.Path = "/v1"
+	}
+	
+	// Normalize duplicated /api
+	for strings.HasPrefix(r.URL.Path, "/api/api/") {
+		r.URL.Path = "/api/" + strings.TrimPrefix(r.URL.Path, "/api/api/")
+	}
+	if r.URL.Path == "/api/api" {
+		r.URL.Path = "/api"
+	}
+
+	if r.URL.Path != originalPath {
+		common.SysLog(fmt.Sprintf("Path normalized from %s to %s", originalPath, r.URL.Path))
+	}
+	h.handler.ServeHTTP(w, r)
 }
 
 func InjectUmamiAnalytics() {

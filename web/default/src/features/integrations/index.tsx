@@ -248,23 +248,38 @@ function SetupCommandBox({
 
   const serverUrl = baseUrl.endsWith('/v1') ? baseUrl.slice(0, -3) : baseUrl
 
-  const buildQuery = (extra: Record<string, string> = {}) => {
-    const params = new URLSearchParams({
-      tool: toolId,
-      key: apiKey || 'your-api-key',
-      serverUrl,
-      ...modelParams,
-      ...extra,
-    })
+  // Mask key for safety in UI display
+  const maskedKey = apiKey
+    ? apiKey.length > 12
+      ? `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}`
+      : '***'
+    : 'your-api-key'
+
+  const buildQuery = (keyVal: string, extra: Record<string, string> = {}) => {
+    const params = new URLSearchParams()
+    params.append('tool', toolId)
+    // Put model parameters first so they are visible in the UI
+    for (const [k, v] of Object.entries(modelParams)) {
+      params.append(k, v)
+    }
+    for (const [k, v] of Object.entries(extra)) {
+      params.append(k, v)
+    }
+    params.append('key', keyVal)
+    params.append('serverUrl', serverUrl)
     return params.toString()
   }
 
-  const unixCmd = `curl -sL "${serverUrl}/api/v1/llm/setup?${buildQuery()}" | bash`
-  const winCmd = `irm "${serverUrl}/api/v1/llm/setup?${buildQuery({ os: 'windows' })}" | iex`
-  const activeCmd = tab === 'unix' ? unixCmd : winCmd
+  const displayUnixCmd = `curl -sL "${serverUrl}/api/v1/llm/setup?${buildQuery(maskedKey)}" | bash`
+  const displayWinCmd = `irm "${serverUrl}/api/v1/llm/setup?${buildQuery(maskedKey, { os: 'windows' })}" | iex`
+  const displayCmd = tab === 'unix' ? displayUnixCmd : displayWinCmd
+
+  const realUnixCmd = `curl -sL "${serverUrl}/api/v1/llm/setup?${buildQuery(apiKey || 'your-api-key')}" | bash`
+  const realWinCmd = `irm "${serverUrl}/api/v1/llm/setup?${buildQuery(apiKey || 'your-api-key', { os: 'windows' })}" | iex`
+  const realCmd = tab === 'unix' ? realUnixCmd : realWinCmd
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(activeCmd)
+    navigator.clipboard.writeText(realCmd)
     setCopied(true)
     toast.success('Đã sao chép lệnh cài đặt!')
     setTimeout(() => setCopied(false), 2000)
@@ -294,7 +309,7 @@ function SetupCommandBox({
       </div>
       <div className="flex items-start gap-2 bg-background rounded border border-border px-3 py-2 font-mono text-[11px] text-foreground overflow-x-auto">
         <span className="text-primary shrink-0 select-none">$</span>
-        <code className="whitespace-nowrap">{activeCmd}</code>
+        <code className="whitespace-nowrap">{displayCmd}</code>
       </div>
       <div className="flex items-center justify-between mt-2">
         <p className="text-[10px] text-muted-foreground">
@@ -483,15 +498,19 @@ function ToolCard({
   const [modelParams, setModelParams] = useState<Record<string, string>>({})
   const [copiedStep, setCopiedStep] = useState<Record<number, boolean>>({})
 
-  // Initialize model slots from globalModel
+  // Initialize model slots from globalModel and available models list
   useEffect(() => {
     if (!tool.modelSlots) return
     const init: Record<string, string> = {}
     for (const slot of tool.modelSlots) {
-      init[slot.key] = slot.key === 'haiku' || slot.key === 'sonnet' || slot.key === 'opus' ? slot.default : globalModel || slot.default
+      let val = slot.key === 'haiku' || slot.key === 'sonnet' || slot.key === 'opus' ? slot.default : globalModel || slot.default
+      if (models.length > 0 && !models.includes(val)) {
+        val = globalModel || models[0]
+      }
+      init[slot.key] = val
     }
     setModelParams(init)
-  }, [globalModel, tool.modelSlots])
+  }, [globalModel, models, tool.modelSlots])
 
   const setSlot = useCallback((key: string, val: string) => {
     setModelParams((prev) => ({ ...prev, [key]: val }))

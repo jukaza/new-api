@@ -48,10 +48,16 @@ func HandleCliSetup(c *gin.Context) {
 		returnSetupErrorScript(c, osType, "API key là bắt buộc (?key=sk-xxx)")
 		return
 	}
-	_, err := model.ValidateUserToken(key)
+	dbKey := strings.TrimPrefix(key, "sk-")
+	_, err := model.ValidateUserToken(dbKey)
 	if err != nil {
 		returnSetupErrorScript(c, osType, "API key không hợp lệ hoặc đã hết hạn")
 		return
+	}
+
+	fullKey := key
+	if !strings.HasPrefix(fullKey, "sk-") {
+		fullKey = "sk-" + fullKey
 	}
 
 	// Xác định Base URL
@@ -103,9 +109,9 @@ func HandleCliSetup(c *gin.Context) {
 	isWin := strings.EqualFold(osType, "windows")
 	var script string
 	if isWin {
-		script = generateCliSetupPowerShell(tool, key, baseUrlWithV1, baseUrlWithoutV1, mainModel, subagentModel, haiku, sonnet, opus)
+		script = generateCliSetupPowerShell(tool, fullKey, baseUrlWithV1, baseUrlWithoutV1, mainModel, subagentModel, haiku, sonnet, opus)
 	} else {
-		script = generateCliSetupBash(tool, key, baseUrlWithV1, baseUrlWithoutV1, mainModel, subagentModel, haiku, sonnet, opus)
+		script = generateCliSetupBash(tool, fullKey, baseUrlWithV1, baseUrlWithoutV1, mainModel, subagentModel, haiku, sonnet, opus)
 	}
 
 	c.Header("Content-Type", "text/plain; charset=utf-8")
@@ -250,10 +256,110 @@ model = "%s"
 		sb.WriteString("cat << 'EOF' > \"$HOME/.local/share/kilo/auth.json\"\n")
 		sb.WriteString(fmt.Sprintf(`{
   "apiKey": "%s",
-  "endpoint": "%s"
+  "endpoint": "%s",
+  "openai-compatible": {
+    "type": "api-key",
+    "apiKey": "%s",
+    "baseUrl": "%s",
+    "model": "%s"
+  }
 }
-`, key, baseUrlWithV1))
+`, key, baseUrlWithV1, key, baseUrlWithV1, mainModel))
 		sb.WriteString("EOF\n")
+		sb.WriteString(fmt.Sprintf(`if command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+  PY_CMD=$(command -v python3 || command -v python)
+  $PY_CMD -c '
+import json, os, sys
+paths = [
+    "~/.config/Code/User/settings.json",
+    "~/.config/Code - Insiders/User/settings.json",
+    "~/.config/Cursor/User/settings.json",
+    "~/Library/Application Support/Code/User/settings.json",
+    "~/Library/Application Support/Code - Insiders/User/settings.json",
+    "~/Library/Application Support/Cursor/User/settings.json"
+]
+for p in paths:
+    full_path = os.path.expanduser(p)
+    if os.path.exists(os.path.dirname(full_path)):
+        data = {}
+        if os.path.exists(full_path):
+            try:
+                with open(full_path, "r") as f:
+                    data = json.load(f)
+            except:
+                pass
+        data["kilocode.customProvider"] = {
+            "name": "new-api",
+            "baseURL": sys.argv[1],
+            "apiKey": sys.argv[2]
+        }
+        data["kilocode.defaultModel"] = sys.argv[3]
+        try:
+            with open(full_path, "w") as f:
+                json.dump(data, f, indent=2)
+        except:
+            pass
+
+def update_kilo_config(file_path, base_url, api_key, model_id):
+    data = {}
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r") as f:
+                lines = []
+                for line in f:
+                    if not line.strip().startswith("//"):
+                        lines.append(line)
+                data = json.loads("".join(lines))
+        except:
+            data = {}
+    if not isinstance(data, dict):
+        data = {}
+    data["$schema"] = "https://app.kilo.ai/config.json"
+    if "provider" not in data or not isinstance(data["provider"], dict):
+        data["provider"] = {}
+    data["provider"]["new-api"] = {
+        "api": "openai",
+        "options": {
+            "apiKey": api_key,
+            "baseURL": base_url
+        },
+        "models": {
+            model_id: {
+                "name": model_id
+            }
+        }
+    }
+    data["model"] = f"new-api/{model_id}"
+    if "models" in data:
+        del data["models"]
+    if "enabled_providers" in data and isinstance(data["enabled_providers"], list):
+        if "new-api" not in data["enabled_providers"]:
+            data["enabled_providers"].append("new-api")
+    if "disabled_providers" in data and isinstance(data["disabled_providers"], list):
+        if "new-api" in data["disabled_providers"]:
+            data["disabled_providers"].remove("new-api")
+    try:
+        dir_name = os.path.dirname(file_path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=2)
+    except:
+        pass
+
+kilo_configs = [
+    os.path.expanduser("~/.config/kilo/kilo.jsonc")
+]
+if os.path.exists(".kilo"):
+    kilo_configs.append(".kilo/kilo.jsonc")
+else:
+    kilo_configs.append("kilo.jsonc")
+
+for p in kilo_configs:
+    update_kilo_config(p, sys.argv[1], sys.argv[2], sys.argv[3])
+' "%s" "%s" "%s"
+fi
+`, baseUrlWithV1, key, mainModel))
 		sb.WriteString("echo \"[new-api] Kilo Code đã được cấu hình thành công!\"\n")
 
 	case "droid":
@@ -443,11 +549,108 @@ Set-Content -Path (Join-Path $dir ".env") -Value $envContent -Force
 		sb.WriteString(fmt.Sprintf(`$authJson = @"
 {
   "apiKey": "%s",
-  "endpoint": "%s"
+  "endpoint": "%s",
+  "openai-compatible": {
+    "type": "api-key",
+    "apiKey": "%s",
+    "baseUrl": "%s",
+    "model": "%s"
+  }
 }
 "@
 Set-Content -Path (Join-Path $dir "auth.json") -Value $authJson -Force
-`, key, baseUrlWithV1))
+`, key, baseUrlWithV1, key, baseUrlWithV1, mainModel))
+		sb.WriteString(fmt.Sprintf(`$vscodePaths = @(
+    "$env:APPDATA\Code\User\settings.json",
+    "$env:APPDATA\Code - Insiders\User\settings.json",
+    "$env:APPDATA\Cursor\User\settings.json"
+)
+foreach ($p in $vscodePaths) {
+    $parent = Split-Path $p
+    if (Test-Path $parent) {
+        $vscode = @{}
+        if (Test-Path $p) {
+            try {
+                $vscode = Get-Content $p -Raw | ConvertFrom-Json
+            } catch {}
+        }
+        if ($vscode -isnot [System.Management.Automation.PSCustomObject]) {
+            $vscode = [PSCustomObject]$vscode
+        }
+        $vscode | Add-Member -NotePropertyName "kilocode.customProvider" -NotePropertyValue @{
+            name = "new-api"
+            baseURL = "%s"
+            apiKey = "%s"
+        } -Force
+        $vscode | Add-Member -NotePropertyName "kilocode.defaultModel" -NotePropertyValue "%s" -Force
+        $vscode | ConvertTo-Json -Depth 10 | Set-Content $p -Force
+    }
+}
+
+function Update-KiloConfig($filePath, $baseUrl, $apiKey, $modelId) {
+    $parent = Split-Path $filePath
+    if ($parent -and !(Test-Path $parent)) {
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+    }
+    $config = @{}
+    if (Test-Path $filePath) {
+        try {
+            $lines = Get-Content $filePath
+            $cleanLines = @()
+            foreach ($line in $lines) {
+                if (!($line.Trim().StartsWith("//"))) {
+                    $cleanLines += $line
+                }
+            }
+            $config = $cleanLines -join [char]10 | ConvertFrom-Json
+        } catch {}
+    }
+    if ($config -isnot [System.Management.Automation.PSCustomObject]) {
+        $config = [PSCustomObject]$config
+    }
+    $config | Add-Member -NotePropertyName '$schema' -NotePropertyValue "https://app.kilo.ai/config.json" -Force
+    if (!$config.provider -or $config.provider -isnot [System.Management.Automation.PSCustomObject]) {
+        $config | Add-Member -NotePropertyName "provider" -NotePropertyValue [PSCustomObject]@{} -Force
+    }
+    $config.provider | Add-Member -NotePropertyName "new-api" -NotePropertyValue [PSCustomObject]@{
+        api = "openai"
+        options = @{
+            apiKey = $apiKey
+            baseURL = $baseUrl
+        }
+        models = @{
+            $modelId = @{
+                name = $modelId
+            }
+        }
+    } -Force
+    $config | Add-Member -NotePropertyName "model" -NotePropertyValue "new-api/$modelId" -Force
+    if ($config.models) {
+        $config.PSObject.Properties.Remove("models")
+    }
+    if ($config.enabled_providers -and $config.enabled_providers -is [System.Collections.IList]) {
+        if ($config.enabled_providers -notcontains "new-api") {
+            $config.enabled_providers += "new-api"
+        }
+    }
+    if ($config.disabled_providers -and $config.disabled_providers -is [System.Collections.IList]) {
+        if ($config.disabled_providers -contains "new-api") {
+            $config.disabled_providers = $config.disabled_providers | Where-Object { $_ -ne "new-api" }
+        }
+    }
+    $config | ConvertTo-Json -Depth 10 | Set-Content $filePath -Force
+}
+
+$kiloPaths = @("$HOME\.config\kilo\kilo.jsonc")
+if (Test-Path ".kilo") {
+    $kiloPaths += ".kilo\kilo.jsonc"
+} else {
+    $kiloPaths += "kilo.jsonc"
+}
+foreach ($kp in $kiloPaths) {
+    Update-KiloConfig $kp "%s" "%s" "%s"
+}
+`, baseUrlWithV1, key, mainModel, baseUrlWithV1, key, mainModel))
 		sb.WriteString("Write-Host \"[new-api] Kilo Code đã được cấu hình thành công!\"\n")
 
 	case "droid":

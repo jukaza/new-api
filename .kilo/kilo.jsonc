@@ -1,3 +1,18 @@
 {
-  "$schema": "https://app.kilo.ai/config.json"
+  "$schema": "https://app.kilo.ai/config.json",
+  "provider": {
+    "new-api": {
+      "api": "openai",
+      "options": {
+        "apiKey": "sk-VOTiNRMbimy8UofDe6q1vFho2nSrqI6vNQYcG4AzAVlTNYlP",
+        "baseURL": "http://localhost:5173/v1"
+      },
+      "models": {
+        "deepseek-v4-flash": {
+          "name": "deepseek-v4-flash"
+        }
+      }
+    }
+  },
+  "model": "new-api/deepseek-v4-flash"
 }

@@ -76,6 +76,13 @@ func ModelMappedHelper(c *gin.Context, info *common.RelayInfo, request dto.Reque
 	}
 	if request != nil {
 		request.SetModelName(info.UpstreamModelName)
+		if openAIReq, ok := request.(*dto.GeneralOpenAIRequest); ok {
+			for i := range openAIReq.Messages {
+				if openAIReq.Messages[i].Role == "developer" {
+					openAIReq.Messages[i].Role = "system"
+				}
+			}
+		}
 	}
 	return nil
 }

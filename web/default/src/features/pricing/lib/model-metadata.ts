@@ -407,6 +407,9 @@ export type ModelVendor =
   | 'bytedance'
   | 'midjourney'
   | 'stability'
+  | 'stepfun'
+  | 'baichuan'
+  | 'siliconflow'
   | 'unknown'
 
 export type ApiInfo = {
@@ -439,6 +442,9 @@ const VENDOR_LABELS: Record<ModelVendor, string> = {
   bytedance: 'ByteDance',
   midjourney: 'Midjourney',
   stability: 'Stability AI',
+  stepfun: 'Stepfun',
+  baichuan: 'Baichuan',
+  siliconflow: 'SiliconFlow (SiliconCloud)',
   unknown: 'Unknown',
 }
 
@@ -462,6 +468,9 @@ function detectVendor(name: string): ModelVendor {
   if (/doubao|seed|jimeng/.test(n)) return 'bytedance'
   if (/midjourney|niji/.test(n)) return 'midjourney'
   if (/^sd-|stable[-_]?diffusion|sdxl/.test(n)) return 'stability'
+  if (/step/.test(n)) return 'stepfun'
+  if (/baichuan/.test(n)) return 'baichuan'
+  if (/silicon/.test(n)) return 'siliconflow'
   return 'unknown'
 }
 
@@ -481,6 +490,9 @@ const TOKENIZER_BY_VENDOR: Partial<Record<ModelVendor, string>> = {
   minimax: 'ABAB tokenizer',
   tencent: 'Hunyuan tokenizer',
   bytedance: 'Doubao tokenizer',
+  stepfun: 'Stepfun tokenizer',
+  baichuan: 'Baichuan tokenizer',
+  siliconflow: 'SiliconFlow tokenizer',
 }
 
 function inferTokenizer(
@@ -521,6 +533,9 @@ const LICENSE_BY_VENDOR: Record<
   bytedance: { license: 'Proprietary (commercial)', kind: 'proprietary' },
   midjourney: { license: 'Proprietary (commercial)', kind: 'proprietary' },
   stability: { license: 'Stability AI Community License', kind: 'open-weight' },
+  stepfun: { license: 'Proprietary (commercial)', kind: 'proprietary' },
+  baichuan: { license: 'Baichuan License / Commercial', kind: 'open-weight' },
+  siliconflow: { license: 'Provider-specific / Commercial', kind: 'proprietary' },
   unknown: { license: 'Provider-specific', kind: 'unknown' },
 }
 
@@ -542,6 +557,9 @@ const HOMEPAGE_BY_VENDOR: Partial<Record<ModelVendor, string>> = {
   bytedance: 'https://www.volcengine.com/docs/82379',
   midjourney: 'https://www.midjourney.com/',
   stability: 'https://platform.stability.ai/',
+  stepfun: 'https://stepfun.com/',
+  baichuan: 'https://www.baichuan-ai.com/',
+  siliconflow: 'https://siliconflow.cn/',
 }
 
 /**

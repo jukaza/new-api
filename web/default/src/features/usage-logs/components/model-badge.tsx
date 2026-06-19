@@ -64,7 +64,7 @@ function resolveModelProvider(modelName: string): ModelProvider | null {
     return { icon: 'Gemini.Color', label: 'Gemini' }
   }
   if (hasAny(['grok-', 'xai-'])) {
-    return { icon: 'Grok.Color', label: 'Grok' }
+    return { icon: 'XAI', label: 'Grok / xAI' }
   }
   if (hasAny(['deepseek-'])) {
     return { icon: 'DeepSeek.Color', label: 'DeepSeek' }
@@ -76,16 +76,52 @@ function resolveModelProvider(modelName: string): ModelProvider | null {
     return { icon: 'Doubao.Color', label: 'Doubao' }
   }
   if (hasAny(['moonshot-', 'kimi-'])) {
-    return { icon: 'Moonshot.Color', label: 'Moonshot' }
+    return { icon: 'Kimi.Color', label: 'Moonshot / Kimi' }
   }
   if (hasAny(['mistral-', 'mixtral-'])) {
     return { icon: 'Mistral.Color', label: 'Mistral' }
   }
   if (hasAny(['llama-', 'meta-'])) {
-    return { icon: 'Meta.Color', label: 'Meta' }
+    return { icon: 'Ollama', label: 'Llama' }
   }
   if (hasAny(['command-', 'cohere-'])) {
     return { icon: 'Cohere.Color', label: 'Cohere' }
+  }
+  if (hasAny(['step-', 'stepfun'])) {
+    return { icon: 'Stepfun.Color', label: 'Stepfun' }
+  }
+  if (hasAny(['baichuan'])) {
+    return { icon: 'Baichuan.Color', label: 'Baichuan' }
+  }
+  if (hasAny(['silicon', 'sf-'])) {
+    return { icon: 'SiliconCloud.Color', label: 'SiliconCloud' }
+  }
+  if (hasAny(['minimax', 'abab'])) {
+    return { icon: 'Minimax.Color', label: 'MiniMax' }
+  }
+  if (hasAny(['glm-', 'zhipu', 'chatglm'])) {
+    return { icon: 'Zhipu.Color', label: 'GLM / Zhipu' }
+  }
+  if (hasAny(['yi-'])) {
+    return { icon: 'Yi.Color', label: 'Yi' }
+  }
+  if (hasAny(['ernie', 'wenxin'])) {
+    return { icon: 'Wenxin.Color', label: 'Ernie' }
+  }
+  if (hasAny(['spark'])) {
+    return { icon: 'Spark.Color', label: 'Spark' }
+  }
+  if (hasAny(['hunyuan'])) {
+    return { icon: 'Hunyuan.Color', label: 'Hunyuan' }
+  }
+  if (hasAny(['kling'])) {
+    return { icon: 'Kling.Color', label: 'Kling' }
+  }
+  if (hasAny(['jimeng'])) {
+    return { icon: 'Jimeng.Color', label: 'Jimeng' }
+  }
+  if (hasAny(['vidu'])) {
+    return { icon: 'Vidu', label: 'Vidu' }
   }
 
   return null

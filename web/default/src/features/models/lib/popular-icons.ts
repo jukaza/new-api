@@ -48,4 +48,8 @@ export const POPULAR_ICONS: PopularIconOption[] = [
   { value: 'Ai360.Color', label: '360 AI', icon: 'Ai360.Color' },
   { value: 'Jina', label: 'Jina', icon: 'Jina' },
   { value: 'AzureAI', label: 'Azure / Microsoft', icon: 'AzureAI' },
+  { value: 'Kimi.Color', label: 'Kimi / Moonshot', icon: 'Kimi.Color' },
+  { value: 'Stepfun.Color', label: 'Stepfun', icon: 'Stepfun.Color' },
+  { value: 'Baichuan.Color', label: 'Baichuan', icon: 'Baichuan.Color' },
+  { value: 'SiliconCloud.Color', label: 'SiliconCloud / SiliconFlow', icon: 'SiliconCloud.Color' },
 ]

@@ -33,7 +33,9 @@ func GetAllEnableAbilityWithChannels() ([]AbilityWithChannel, error) {
 	err := DB.Table("abilities").
 		Select("abilities.*, channels.type as channel_type").
 		Joins("left join channels on abilities.channel_id = channels.id").
-		Where("abilities.enabled = ?", true).
+		Joins("left join models on abilities.model = models.model_name and models.deleted_at is null").
+		Joins("left join models as all_models on abilities.model = all_models.model_name").
+		Where("abilities.enabled = ? and (all_models.id is null or models.status = 1)", true).
 		Scan(&abilities).Error
 	return abilities, err
 }
@@ -41,14 +43,24 @@ func GetAllEnableAbilityWithChannels() ([]AbilityWithChannel, error) {
 func GetGroupEnabledModels(group string) []string {
 	var models []string
 	// Find distinct models
-	DB.Table("abilities").Where(commonGroupCol+" = ? and enabled = ?", group, true).Distinct("model").Pluck("model", &models)
+	DB.Table("abilities").
+		Select("DISTINCT abilities.model").
+		Joins("left join models on abilities.model = models.model_name and models.deleted_at is null").
+		Joins("left join models as all_models on abilities.model = all_models.model_name").
+		Where("abilities."+commonGroupCol+" = ? and abilities.enabled = ? and (all_models.id is null or models.status = 1)", group, true).
+		Pluck("model", &models)
 	return models
 }
 
 func GetEnabledModels() []string {
 	var models []string
 	// Find distinct models
-	DB.Table("abilities").Where("enabled = ?", true).Distinct("model").Pluck("model", &models)
+	DB.Table("abilities").
+		Select("DISTINCT abilities.model").
+		Joins("left join models on abilities.model = models.model_name and models.deleted_at is null").
+		Joins("left join models as all_models on abilities.model = all_models.model_name").
+		Where("abilities.enabled = ? and (all_models.id is null or models.status = 1)", true).
+		Pluck("model", &models)
 	return models
 }
 
@@ -398,7 +410,7 @@ func SyncModelsFromChannels(tx *gorm.DB) error {
 	// If it doesn't exist, insert it.
 	for name := range standardModels {
 		var count int64
-		if err := useDB.Model(&Model{}).Where("model_name = ?", name).Count(&count).Error; err != nil {
+		if err := useDB.Unscoped().Model(&Model{}).Where("model_name = ?", name).Count(&count).Error; err != nil {
 			return err
 		}
 		if count == 0 {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -350,14 +351,22 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 
 		// 计算应充值额度：
 		// - Stripe 订单：Money 代表经分组倍率换算后的美元数量，直接 * QuotaPerUnit
-		// - 其他订单（如易支付）：Amount 为美元数量，* QuotaPerUnit
+		// - 其他订单（如易支付）：Amount 为美元/本地货币数量，* QuotaPerUnit
 		if topUp.PaymentProvider == PaymentProviderStripe {
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 			quotaToAdd = int(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).IntPart())
 		} else {
 			dAmount := decimal.NewFromInt(topUp.Amount)
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+			if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeCustom {
+				dPrice := decimal.NewFromFloat(operation_setting.Price)
+				if dPrice.IsZero() {
+					dPrice = decimal.NewFromFloat(1)
+				}
+				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).Div(dPrice).IntPart())
+			} else {
+				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+			}
 		}
 		if quotaToAdd <= 0 {
 			return errors.New("Hạn ngạch nạp tiền không hợp lệ")

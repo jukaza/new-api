@@ -69,9 +69,7 @@ type PaymentMethodDialogProps = {
 }
 
 const PAYMENT_TYPES = [
-  { value: 'alipay', label: 'Alipay' },
-  { value: 'wxpay', label: 'WeChat Pay' },
-  { value: 'stripe', label: 'Stripe' },
+  { value: 'sepay', label: 'SePay (Ngân hàng)' },
 ]
 
 const getColorPreview = (color: string) => {
@@ -82,14 +80,13 @@ const getColorPreview = (color: string) => {
 }
 
 const COLOR_PRESETS = [
-  { value: '#1677FF', label: 'Blue (Alipay)' },
-  { value: '#07C160', label: 'Green (WeChat)' },
-  { value: '#635BFF', label: 'Purple (Stripe)' },
-  { value: '#1890FF', label: 'Sky Blue' },
-  { value: '#52C41A', label: 'Lime Green' },
+  { value: '#0054a6', label: 'MB Bank (Blue)' },
+  { value: '#74b22e', label: 'Vietcombank (Green)' },
+  { value: '#ee3124', label: 'Techcombank (Red)' },
+  { value: '#008542', label: 'Vietinbank (Green)' },
+  { value: '#005294', label: 'BIDV (Blue)' },
+  { value: '#0ea5e9', label: 'Ocean Blue' },
   { value: 'black', label: 'Black' },
-  { value: '#FF4D4F', label: 'Red' },
-  { value: '#FFA940', label: 'Orange' },
 ].map((preset) => {
   const previewColor = getColorPreview(preset.value)
   return {

@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { type QueryClient } from '@tanstack/react-query'
 import {
   createRootRouteWithContext,
@@ -35,8 +36,13 @@ import { NotFoundError } from '@/features/errors/not-found-error'
 import { getSetupStatus } from '@/features/setup/api'
 
 function RootComponent() {
+  const { i18n } = useTranslation()
   // Load system configuration (logo, system name, etc.) from backend
   useSystemConfig({ autoLoad: true })
+
+  useEffect(() => {
+    document.documentElement.lang = i18n.language || 'vi'
+  }, [i18n.language])
 
   useEffect(() => {
     const aff = new URLSearchParams(window.location.search).get('aff')?.trim()

@@ -48,36 +48,27 @@ type PaymentMethodsVisualEditorProps = {
 
 const PAYMENT_TEMPLATES = [
   {
-    name: 'Alipay',
+    name: 'SePay Chuyển khoản MB Bank',
     template: {
-      color: 'rgba(var(--semi-blue-5), 1)',
-      name: '支付宝',
-      type: 'alipay',
+      color: '#0054a6',
+      name: 'Chuyển khoản MB Bank',
+      type: 'sepay',
     },
   },
   {
-    name: 'WeChat Pay',
+    name: 'SePay Chuyển khoản Vietcombank',
     template: {
-      color: 'rgba(var(--semi-green-5), 1)',
-      name: '微信',
-      type: 'wxpay',
+      color: '#74b22e',
+      name: 'Chuyển khoản Vietcombank',
+      type: 'sepay',
     },
   },
   {
-    name: 'Stripe',
+    name: 'SePay Chuyển khoản Ngân hàng khác',
     template: {
-      color: 'rgba(var(--semi-green-5), 1)',
-      name: 'Stripe',
-      type: 'stripe',
-    },
-  },
-  {
-    name: 'Custom',
-    template: {
-      color: 'black',
-      min_topup: '50',
-      name: '自定义1',
-      type: 'custom1',
+      color: '#0ea5e9',
+      name: 'Chuyển khoản Ngân hàng',
+      type: 'sepay',
     },
   },
 ]

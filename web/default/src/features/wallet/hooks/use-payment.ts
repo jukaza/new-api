@@ -77,7 +77,7 @@ export function usePayment() {
 
   // Process payment
   const processPayment = useCallback(
-    async (topupAmount: number, paymentType: string) => {
+    async (topupAmount: number, paymentType: string): Promise<{ success: boolean; isSepay?: boolean; sepayData?: any }> => {
       try {
         setProcessing(true)
 
@@ -96,14 +96,23 @@ export function usePayment() {
 
         if (!isApiSuccess(response)) {
           toast.error(response.message || i18next.t('Payment request failed'))
-          return false
+          return { success: false }
+        }
+
+        // Handle SePay bank transfer payment
+        if ((response as any).is_sepay) {
+          return {
+            success: true,
+            isSepay: true,
+            sepayData: response.data,
+          }
         }
 
         // Handle Stripe payment
         if (isStripe && response.data?.pay_link) {
           window.open(response.data.pay_link as string, '_blank')
           toast.success(i18next.t('Redirecting to payment page...'))
-          return true
+          return { success: true }
         }
 
         // Handle non-Stripe payment
@@ -112,14 +121,14 @@ export function usePayment() {
           if (url) {
             submitPaymentForm(url, response.data)
             toast.success(i18next.t('Redirecting to payment page...'))
-            return true
+            return { success: true }
           }
         }
 
-        return false
+        return { success: false }
       } catch (_error) {
         toast.error(i18next.t('Payment request failed'))
-        return false
+        return { success: false }
       } finally {
         setProcessing(false)
       }

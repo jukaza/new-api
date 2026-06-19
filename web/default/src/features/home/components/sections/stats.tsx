@@ -98,10 +98,10 @@ export function Stats(_props: StatsProps) {
   const { t } = useTranslation()
 
   const stats: StatItem[] = [
-    { end: 50, suffix: '+', label: t('upstream services integrated') },
-    { end: 100, suffix: '+', label: t('model billing support') },
-    { end: 50, suffix: '+', label: t('compatible API routes') },
-    { end: 10, suffix: '+', label: t('scheduling controls') },
+    { end: 50, suffix: '+', label: 'Nhà cung cấp đã tích hợp' },
+    { end: 100, suffix: '+', label: 'Mô hình AI được hỗ trợ' },
+    { end: 50, suffix: '+', label: 'Đường dẫn API tương thích' },
+    { end: 10, suffix: '+', label: 'Quy tắc điều phối & Định tuyến' },
   ]
 
   return (

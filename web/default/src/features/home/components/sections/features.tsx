@@ -40,10 +40,8 @@ export function Features(_props: FeaturesProps) {
     {
       id: 'fast',
       num: '01',
-      title: t('Lightning Fast'),
-      desc: t(
-        'Optimized network architecture ensures millisecond response times'
-      ),
+      title: 'Tốc độ siêu việt',
+      desc: 'Kiến trúc mạng tối ưu hóa đảm bảo thời gian phản hồi tính bằng mili giây cho mọi API call.',
       span: 'md:col-span-2',
       icon: <Zap className='size-4 text-blue-400' />,
       visual: (
@@ -64,10 +62,8 @@ export function Features(_props: FeaturesProps) {
     {
       id: 'secure',
       num: '02',
-      title: t('Secure & Reliable'),
-      desc: t(
-        'Enterprise-grade security with comprehensive permission management'
-      ),
+      title: 'Bảo mật & Tin cậy',
+      desc: 'Bảo mật thông tin tài khoản tuyệt đối với cơ chế mã hóa API Key và phân quyền linh hoạt.',
       span: 'md:col-span-1',
       icon: <Shield className='size-4 text-emerald-400' />,
       visual: (
@@ -101,13 +97,13 @@ export function Features(_props: FeaturesProps) {
     {
       id: 'global',
       num: '03',
-      title: t('Global Coverage'),
-      desc: t('Multi-region deployment for stable global access'),
+      title: 'Độ trễ tối ưu',
+      desc: 'Định tuyến thông minh kết nối tới cụm server biên, mang lại tốc độ tốt nhất tại Việt Nam.',
       span: 'md:col-span-1',
       icon: <Globe className='size-4 text-violet-400' />,
       visual: (
         <div className='mt-4 space-y-2'>
-          {[t('Load Balancing'), t('Rate Limiting'), t('Cost Tracking')].map(
+          {['Cân bằng tải', 'Giới hạn tần suất', 'Theo dõi chi phí'].map(
             (step, i) => (
               <div key={step} className='flex items-center gap-2'>
                 <div
@@ -130,8 +126,8 @@ export function Features(_props: FeaturesProps) {
     {
       id: 'developer',
       num: '04',
-      title: t('Developer Friendly'),
-      desc: t('Compatible API routes for common AI application workflows'),
+      title: 'Thân thiện với Nhà phát triển',
+      desc: 'Tương thích 100% định dạng API của OpenAI, dễ dàng tích hợp vào ứng dụng chỉ với 1 dòng code.',
       span: 'md:col-span-2',
       icon: <Code className='size-4 text-amber-400' />,
       visual: (
@@ -148,7 +144,7 @@ export function Features(_props: FeaturesProps) {
           </div>
           <div className='text-muted-foreground flex items-center gap-1.5 text-xs'>
             <Code className='size-3.5 text-blue-500' />
-            {t('Multi-protocol Compatible')}
+            Tương thích đa giao thức
           </div>
         </div>
       ),
@@ -158,23 +154,23 @@ export function Features(_props: FeaturesProps) {
   const additionalFeatures = [
     {
       icon: <Gauge className='size-5' strokeWidth={1.5} />,
-      title: t('High Performance'),
-      desc: t('Support for high concurrency with automatic load balancing'),
+      title: 'Hiệu Năng Cao',
+      desc: 'Hỗ trợ lượng truy cập đồng thời lớn nhờ hệ thống cân bằng tải tự động thông minh.',
     },
     {
       icon: <DollarSign className='size-5' strokeWidth={1.5} />,
-      title: t('Transparent Billing'),
-      desc: t('Pay-as-you-go with real-time usage monitoring'),
+      title: 'Chi Phí Minh Bạch',
+      desc: 'Thanh toán linh hoạt theo lượng sử dụng thực tế và theo dõi chi tiết theo thời gian thực.',
     },
     {
       icon: <Users className='size-5' strokeWidth={1.5} />,
-      title: t('Team Collaboration'),
-      desc: t('Multi-user management with flexible permission allocation'),
+      title: 'Quản Lý Đa Dự Án',
+      desc: 'Tạo nhiều khóa API (API Key) và quản lý hạn ngạch riêng biệt cho từng dự án/ứng dụng.',
     },
     {
       icon: <HeartHandshake className='size-5' strokeWidth={1.5} />,
-      title: t('Open Source'),
-      desc: t('Community driven, self-hosted, and extensible'),
+      title: 'Hỗ Trợ Kỹ Thuật 24/7',
+      desc: 'Đội ngũ kỹ thuật hỗ trợ nhanh qua Zalo/Telegram, sẵn sàng giải đáp mọi thắc mắc tích hợp.',
     },
   ]
 
@@ -183,12 +179,12 @@ export function Features(_props: FeaturesProps) {
       <div className='mx-auto max-w-6xl'>
         <AnimateInView className='mb-16 max-w-lg'>
           <p className='text-muted-foreground mb-3 text-xs font-medium tracking-widest uppercase'>
-            {t('Core Features')}
+            Tính năng nổi bật
           </p>
           <h2 className='text-2xl leading-tight font-bold tracking-tight md:text-3xl'>
-            {t('Built for developers,')}
+            Thiết kế cho nhà phát triển,
             <br />
-            {t('designed for scale')}
+            tối ưu hóa cho quy mô lớn
           </h2>
         </AnimateInView>
 

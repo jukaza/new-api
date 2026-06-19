@@ -53,20 +53,18 @@ export function CTA(props: CTAProps) {
         animation='scale-in'
       >
         <h2 className='text-2xl leading-tight font-bold tracking-tight md:text-4xl'>
-          {t('Ready to simplify')}
+          Sẵn sàng đơn giản hóa
           <br />
           <span className='bg-gradient-to-r from-blue-400 via-violet-400 to-purple-500 bg-clip-text text-transparent'>
-            {t('your AI integration?')}
+            việc tích hợp AI của bạn?
           </span>
         </h2>
         <p className='text-muted-foreground/80 mx-auto mt-5 max-w-md text-sm leading-relaxed md:text-base'>
-          {t(
-            'Deploy your own gateway and start routing requests through your configured upstream services.'
-          )}
+          Đăng ký tài khoản, nạp ví tự động và bắt đầu kết nối tới hàng loạt mô hình AI hàng đầu ngay hôm nay.
         </p>
         <div className='mt-8 flex items-center justify-center gap-3'>
           <Button className='group rounded-lg' render={<Link to='/sign-up' />}>
-            {t('Get Started')}
+            Bắt Đầu Ngay
             <ArrowRight className='ml-1 size-3.5 transition-transform duration-200 group-hover:translate-x-0.5' />
           </Button>
           <Button
@@ -74,7 +72,7 @@ export function CTA(props: CTAProps) {
             className='border-border/50 hover:border-border hover:bg-muted/50 rounded-lg'
             render={<Link to='/pricing' />}
           >
-            {t('View Pricing')}
+            Xem Bảng Giá
           </Button>
         </div>
       </AnimateInView>

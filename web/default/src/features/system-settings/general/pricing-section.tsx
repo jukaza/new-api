@@ -220,7 +220,7 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
               )}
             />
 
-            {displayType !== 'TOKENS' && (
+            {displayType !== 'TOKENS' && displayType !== 'CUSTOM' && (
               <FormField
                 control={form.control}
                 name='USDExchangeRate'
@@ -248,64 +248,31 @@ export function PricingSection({ defaultValues }: PricingSectionProps) {
             )}
 
             {displayType === 'CUSTOM' && (
-              <div className='grid gap-4 sm:grid-cols-2'>
-                <FormField
-                  control={form.control}
-                  name='general_setting.custom_currency_symbol'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('Custom Currency Symbol')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          type='text'
-                          value={field.value ?? ''}
-                          onChange={field.onChange}
-                          name={field.name}
-                          onBlur={field.onBlur}
-                          ref={field.ref}
-                          maxLength={8}
-                          placeholder={t('e.g. ¥ or HK$')}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {t('Prefix used when displaying prices')}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name='general_setting.custom_currency_exchange_rate'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('Units per USD')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          type='number'
-                          step='0.01'
-                          value={field.value ?? ''}
-                          onChange={(e) =>
-                            field.onChange(
-                              e.target.value === ''
-                                ? undefined
-                                : e.target.valueAsNumber
-                            )
-                          }
-                          name={field.name}
-                          onBlur={field.onBlur}
-                          ref={field.ref}
-                          placeholder={t('e.g. 8 means 1 USD = 8 units')}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {t('Conversion rate from USD to your custom currency')}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name='general_setting.custom_currency_symbol'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Ký hiệu tiền tệ hiển thị')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type='text'
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        name={field.name}
+                        onBlur={field.onBlur}
+                        ref={field.ref}
+                        maxLength={8}
+                        placeholder={t('Ví dụ: đ')}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t('Ký hiệu tiền tệ hiển thị trước hoặc sau giá tiền (ví dụ: đ)')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             )}
 
             {showDisplayInCurrencyOption && (

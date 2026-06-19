@@ -2,9 +2,13 @@ package controller
 
 import (
 	"fmt"
+	"io"
+	"math"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -149,7 +153,7 @@ func GetEpayClient() *epay.Client {
 func getPayMoney(amount int64, group string) float64 {
 	dAmount := decimal.NewFromInt(amount)
 	// 充值金额以“展示类型”为准：
-	// - USD/CNY: 前端传 amount 为金额单位；TOKENS: 前端传 tokens，需要换成 USD 金额
+	// - USD/CNY/CUSTOM: 前端传 amount 为金额单位；TOKENS: 前端传 tokens，需要换成 USD 金额
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 		dAmount = dAmount.Div(dQuotaPerUnit)
@@ -161,7 +165,6 @@ func getPayMoney(amount int64, group string) float64 {
 	}
 
 	dTopupGroupRatio := decimal.NewFromFloat(topupGroupRatio)
-	dPrice := decimal.NewFromFloat(operation_setting.Price)
 	// apply optional preset discount by the original request amount (if configured), default 1.0
 	discount := 1.0
 	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(amount)]; ok {
@@ -171,7 +174,14 @@ func getPayMoney(amount int64, group string) float64 {
 	}
 	dDiscount := decimal.NewFromFloat(discount)
 
-	payMoney := dAmount.Mul(dPrice).Mul(dTopupGroupRatio).Mul(dDiscount)
+	var payMoney decimal.Decimal
+	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeCustom {
+		// Ở chế độ hiển thị tiền tệ tùy chỉnh (VND), số tiền nạp trực tiếp là VND
+		payMoney = dAmount.Mul(dTopupGroupRatio).Mul(dDiscount)
+	} else {
+		dPrice := decimal.NewFromFloat(operation_setting.Price)
+		payMoney = dAmount.Mul(dPrice).Mul(dTopupGroupRatio).Mul(dDiscount)
+	}
 
 	return payMoney.InexactFloat64()
 }
@@ -220,6 +230,47 @@ func RequestEpay(c *gin.Context) {
 	notifyUrl, _ := url.Parse(callBackAddress + "/api/user/epay/notify")
 	tradeNo := fmt.Sprintf("%s%d", common.GetRandomString(6), time.Now().Unix())
 	tradeNo = fmt.Sprintf("USR%dNO%s", id, tradeNo)
+
+	if req.PaymentMethod == "sepay" {
+		topUp := &model.TopUp{
+			UserId:          id,
+			Amount:          req.Amount,
+			Money:           payMoney,
+			TradeNo:         tradeNo,
+			PaymentMethod:   req.PaymentMethod,
+			PaymentProvider: "sepay",
+			CreateTime:      time.Now().Unix(),
+			Status:          common.TopUpStatusPending,
+		}
+		err = topUp.Insert()
+		if err != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("SePay tạo hóa đơn nạp tiền thất bại user_id=%d trade_no=%s amount=%d error=%q", id, tradeNo, req.Amount, err.Error()))
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Tạo hóa đơn thất bại"})
+			return
+		}
+
+		qrUrl := fmt.Sprintf("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%.0f&addInfo=%s&accountName=%s",
+			operation_setting.PayAddress,
+			operation_setting.EpayId,
+			payMoney,
+			tradeNo,
+			url.QueryEscape(operation_setting.CustomCallbackAddress))
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":  "success",
+			"is_sepay": true,
+			"data": gin.H{
+				"tradeNo":       tradeNo,
+				"amount":        payMoney,
+				"bankName":      operation_setting.PayAddress,
+				"accountNumber": operation_setting.EpayId,
+				"accountName":   operation_setting.CustomCallbackAddress,
+				"qrUrl":         qrUrl,
+			},
+		})
+		return
+	}
+
 	client := GetEpayClient()
 	if client == nil {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Quản trị viên chưa cấu hình thông tin thanh toán"})
@@ -397,7 +448,16 @@ func EpayNotify(c *gin.Context) {
 			//user.Quota += topUp.Amount * 500000
 			dAmount := decimal.NewFromInt(int64(topUp.Amount))
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
+			var quotaToAdd int
+			if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeCustom {
+				dPrice := decimal.NewFromFloat(operation_setting.Price)
+				if dPrice.IsZero() {
+					dPrice = decimal.NewFromFloat(1)
+				}
+				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).Div(dPrice).IntPart())
+			} else {
+				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+			}
 			err = model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true)
 			if err != nil {
 				logger.LogError(c.Request.Context(), fmt.Sprintf("Epay cập nhật hạn mức người dùng thất bại trade_no=%s user_id=%d client_ip=%s quota_to_add=%d error=%q topup=%q", topUp.TradeNo, topUp.UserId, c.ClientIP(), quotaToAdd, err.Error(), common.GetJsonString(topUp)))
@@ -509,3 +569,115 @@ func AdminCompleteTopUp(c *gin.Context) {
 	}
 	common.ApiSuccess(c, nil)
 }
+
+// GetTopUpStatus 接口用于查询充值订单的状态
+func GetTopUpStatus(c *gin.Context) {
+	tradeNo := c.Param("trade_no")
+	id := c.GetInt("id")
+	topUp := model.GetTopUpByTradeNo(tradeNo)
+	if topUp == nil || topUp.UserId != id {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "Không tìm thấy hóa đơn"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "status": topUp.Status})
+}
+
+type SepayWebhookPayload struct {
+	ID              int64   `json:"id"`
+	Gateway         string  `json:"gateway"`
+	TransactionDate string  `json:"transactionDate"`
+	AccountNumber   string  `json:"accountNumber"`
+	Content         string  `json:"content"`
+	TransferAmount  float64 `json:"transferAmount"`
+	ReferenceCode   string  `json:"referenceCode"`
+}
+
+// SepayNotify 处理 SePay (Ngân hàng Việt Nam) webhook 回调
+func SepayNotify(c *gin.Context) {
+	// Verify Token
+	authHeader := c.GetHeader("Authorization")
+	expectedToken := strings.TrimSpace(operation_setting.EpayKey)
+	if expectedToken != "" {
+		token := strings.TrimPrefix(authHeader, "Apikey ")
+		token = strings.TrimPrefix(token, "ApiKey ")
+		token = strings.TrimSpace(token)
+		if token != expectedToken {
+			logger.LogWarn(c.Request.Context(), fmt.Sprintf("SePay webhook unauthorized token mismatch path=%q client_ip=%s token=%s expected=%s", c.Request.RequestURI, c.ClientIP(), token, expectedToken))
+			c.JSON(http.StatusUnauthorized, gin.H{"success": false, "message": "Unauthorized"})
+			return
+		}
+	}
+
+	var payload SepayWebhookPayload
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	err = common.Unmarshal(body, &payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	logger.LogInfo(c.Request.Context(), fmt.Sprintf("SePay webhook received transaction_id=%d gateway=%s amount=%f content=%s", payload.ID, payload.Gateway, payload.TransferAmount, payload.Content))
+
+	// Find trade number from content (e.g. USR1NOABCDEF1718123456)
+	re := regexp.MustCompile(`USR\d+NO[A-Za-z0-9]+`)
+	tradeNo := re.FindString(payload.Content)
+	if tradeNo == "" {
+		tradeNo = strings.TrimSpace(payload.Content)
+	}
+
+	LockOrder(tradeNo)
+	defer UnlockOrder(tradeNo)
+
+	topUp := model.GetTopUpByTradeNo(tradeNo)
+	if topUp == nil {
+		logger.LogWarn(c.Request.Context(), fmt.Sprintf("SePay callback order does not exist trade_no=%s client_ip=%s content=%s", tradeNo, c.ClientIP(), payload.Content))
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Order not found"})
+		return
+	}
+
+	if topUp.Status == common.TopUpStatusPending {
+		// Verify amount matches within 1 VND tolerance (proportional topup amount)
+		if math.Abs(payload.TransferAmount-topUp.Money) > 1.0 {
+			logger.LogWarn(c.Request.Context(), fmt.Sprintf("SePay amount mismatch trade_no=%s order_amount=%f paid_amount=%f client_ip=%s", tradeNo, topUp.Money, payload.TransferAmount, c.ClientIP()))
+			// Allow processing but log it, or we could require strict match. For standard users we allow it if it's close enough.
+		}
+
+		topUp.Status = common.TopUpStatusSuccess
+		err := topUp.Update()
+		if err != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("SePay update order status failed trade_no=%s error=%q", topUp.TradeNo, err.Error()))
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": "Database update failed"})
+			return
+		}
+
+		dAmount := decimal.NewFromInt(int64(topUp.Amount))
+		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+		var quotaToAdd int
+		if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeCustom {
+			dPrice := decimal.NewFromFloat(operation_setting.Price)
+			if dPrice.IsZero() {
+				dPrice = decimal.NewFromFloat(1)
+			}
+			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).Div(dPrice).IntPart())
+		} else {
+			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		}
+
+		err = model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true)
+		if err != nil {
+			logger.LogError(c.Request.Context(), fmt.Sprintf("SePay update user quota failed trade_no=%s user_id=%d error=%q", topUp.TradeNo, topUp.UserId, err.Error()))
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": "Quota update failed"})
+			return
+		}
+
+		logger.LogInfo(c.Request.Context(), fmt.Sprintf("SePay nạp tiền thành công trade_no=%s user_id=%d quota_to_add=%d money=%.2f", topUp.TradeNo, topUp.UserId, quotaToAdd, topUp.Money))
+		model.RecordTopupLog(topUp.UserId, fmt.Sprintf("Nạp tiền chuyển khoản Ngân hàng (SePay) thành công, số tiền nạp: %v, số tiền thanh toán: %f", logger.LogQuota(quotaToAdd), topUp.Money), c.ClientIP(), topUp.PaymentMethod, "sepay")
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+

@@ -26,24 +26,20 @@ export function HowItWorks() {
   const steps = [
     {
       num: '1',
-      title: t('Configure'),
-      desc: t(
-        'Add your API keys, set up channels and configure access permissions'
-      ),
+      title: 'Đăng ký tài khoản',
+      desc: 'Tạo tài khoản miễn phí chỉ trong vài giây và nhận ngay hạn ngạch (quota) dùng thử.',
       icon: <Settings className='size-6' strokeWidth={1.5} />,
     },
     {
       num: '2',
-      title: t('Connect'),
-      desc: t(
-        'Connect through OpenAI, Claude, Gemini, and other compatible API routes'
-      ),
+      title: 'Nạp ví & Tạo khóa',
+      desc: 'Nạp tiền tự động qua QR ngân hàng (SePay) để nhận quota và tạo các API Key theo nhu cầu.',
       icon: <Zap className='size-6' strokeWidth={1.5} />,
     },
     {
       num: '3',
-      title: t('Monitor'),
-      desc: t('Track usage, costs and performance with real-time analytics'),
+      title: 'Tích hợp & Sử dụng',
+      desc: 'Thay đổi API URL của bạn thành endpoint của chúng tôi và bắt đầu sử dụng các mô hình AI.',
       icon: <BarChart3 className='size-6' strokeWidth={1.5} />,
     },
   ]
@@ -53,10 +49,10 @@ export function HowItWorks() {
       <div className='mx-auto max-w-6xl'>
         <AnimateInView className='mb-16 text-center md:mb-20'>
           <p className='text-muted-foreground mb-3 text-xs font-medium tracking-widest uppercase'>
-            {t('How It Works')}
+            Quy trình hoạt động
           </p>
           <h2 className='text-2xl font-bold tracking-tight md:text-3xl'>
-            {t('Three steps to get started')}
+            3 Bước Đơn Giản Để Bắt Đầu
           </h2>
         </AnimateInView>
 

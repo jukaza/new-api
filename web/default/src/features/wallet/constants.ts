@@ -30,6 +30,7 @@ export const DEFAULT_PRESET_MULTIPLIERS = [1, 5, 10, 30, 50, 100, 300, 500]
  * Payment method types
  */
 export const PAYMENT_TYPES = {
+  SEPAY: 'sepay',
   ALIPAY: 'alipay',
   WECHAT: 'wxpay',
   STRIPE: 'stripe',
@@ -41,12 +42,13 @@ export const PAYMENT_TYPES = {
 /**
  * Default payment type
  */
-export const DEFAULT_PAYMENT_TYPE = PAYMENT_TYPES.ALIPAY
+export const DEFAULT_PAYMENT_TYPE = PAYMENT_TYPES.SEPAY
 
 /**
  * Payment icon colors (HEX format for react-icons)
  */
 export const PAYMENT_ICON_COLORS = {
+  [PAYMENT_TYPES.SEPAY]: '#0ea5e9',
   [PAYMENT_TYPES.ALIPAY]: '#1677FF',
   [PAYMENT_TYPES.WECHAT]: '#07C160',
   [PAYMENT_TYPES.STRIPE]: '#635BFF',

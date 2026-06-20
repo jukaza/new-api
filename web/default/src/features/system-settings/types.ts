@@ -167,6 +167,9 @@ export type ModelSettings = {
   'billing_setting.billing_mode': string
   'billing_setting.billing_expr': string
   'tool_price_setting.prices': string
+  // Legacy group fields — kept for backward compatibility with stored backend
+  // options. The simplified group model only manages GroupRatio and
+  // UserUsableGroups via the admin UI; all other group fields are read-only.
   TopupGroupRatio: string
   GroupRatio: string
   UserUsableGroups: string
@@ -210,6 +213,7 @@ export type BillingSettings = {
   'billing_setting.billing_mode': string
   'billing_setting.billing_expr': string
   'tool_price_setting.prices': string
+  // Legacy group fields — same as in ModelSettings; kept for backward compat.
   TopupGroupRatio: string
   GroupRatio: string
   UserUsableGroups: string

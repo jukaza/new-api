@@ -13,35 +13,12 @@ GNU Affero General Public License for more details.
 
 You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-For commercial licensing, please contact support@quantumnous.com
 */
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { PublicLayout } from '@/components/layout'
 import { useStatus } from '@/hooks/use-status'
 
-type SectionId =
-  | 'overview'
-  | 'chat'
-  | 'completions'
-  | 'embeddings'
-  | 'models'
-  | 'errors'
-
-interface NavItem {
-  id: SectionId
-  label: string
-}
-
-const navItems: NavItem[] = [
-  { id: 'overview', label: 'Tổng quan' },
-  { id: 'chat', label: 'Chat Completions' },
-  { id: 'completions', label: 'Text Completions' },
-  { id: 'embeddings', label: 'Embeddings' },
-  { id: 'models', label: 'Models List' },
-  { id: 'errors', label: 'Xử lý lỗi' },
-]
+// No longer needed, moved to DocsLayout
 
 function MethodBadge({ method }: { method: 'POST' | 'GET' }) {
   return (
@@ -260,9 +237,8 @@ function InfoBox({
   )
 }
 
-export function Docs() {
+export function ApiDocs() {
   const { status } = useStatus()
-  const [activeSection, setActiveSection] = useState<SectionId>('overview')
 
   const serverAddress =
     (status?.server_address as string | undefined) ||
@@ -270,41 +246,8 @@ export function Docs() {
 
   const systemName = (status?.system_name as string | undefined) || 'JukaShop'
 
-  const scrollToSection = (id: SectionId) => {
-    setActiveSection(id)
-    document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
   return (
-    <PublicLayout>
-      <div className='mx-auto flex max-w-6xl gap-8 px-4 py-8'>
-        {/* Sidebar Navigation */}
-        <aside className='hidden w-52 shrink-0 lg:block'>
-          <div className='sticky top-24'>
-            <p className='text-muted-foreground mb-3 text-xs font-semibold uppercase tracking-wider'>
-              Tài liệu API
-            </p>
-            <nav className='space-y-0.5'>
-              {navItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToSection(item.id)}
-                  className={cn(
-                    'w-full cursor-pointer rounded-lg px-3 py-2 text-left text-sm transition-colors',
-                    activeSection === item.id
-                      ? 'bg-primary/10 text-primary font-medium'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                  )}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className='min-w-0 flex-1 space-y-12'>
+    <div className='space-y-12'>
           {/* Section: Overview */}
           <section id='section-overview'>
             <div className='mb-6'>
@@ -545,8 +488,6 @@ def chat_with_retry(messages, max_retries=3):
                 raise
     raise Exception("Vượt quá số lần thử lại tối đa")`} />
           </section>
-        </main>
-      </div>
-    </PublicLayout>
+    </div>
   )
 }

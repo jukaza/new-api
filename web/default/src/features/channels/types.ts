@@ -289,7 +289,7 @@ export interface TagOperationParams {
   weight?: number
   model_mapping?: string
   models?: string
-  groups?: string
+  // groups field removed: simplified group model — channels serve all groups automatically
 }
 
 // ============================================================================

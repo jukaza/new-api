@@ -142,15 +142,10 @@ const groupSchema = z.object({
       })
     }
   }),
-  TopupGroupRatio: z.string().superRefine((value, ctx) => {
-    const result = validateJsonString(value)
-    if (!result.valid) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: result.message || 'Invalid JSON',
-      })
-    }
-  }),
+  // The simplified group model only manages GroupRatio + UserUsableGroups.
+  // The remaining fields are kept for backward compatibility with stored
+  // options but are no longer editable and default to empty values.
+  TopupGroupRatio: z.string(),
   UserUsableGroups: z.string().superRefine((value, ctx) => {
     const result = validateJsonString(value)
     if (!result.valid) {
@@ -160,39 +155,10 @@ const groupSchema = z.object({
       })
     }
   }),
-  GroupGroupRatio: z.string().superRefine((value, ctx) => {
-    const result = validateJsonString(value)
-    if (!result.valid) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: result.message || 'Invalid JSON',
-      })
-    }
-  }),
-  AutoGroups: z.string().superRefine((value, ctx) => {
-    const result = validateJsonString(value, {
-      predicate: (parsed) =>
-        Array.isArray(parsed) &&
-        parsed.every((item) => typeof item === 'string'),
-      predicateMessage: 'Expected a JSON array of group identifiers',
-    })
-    if (!result.valid) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: result.message || 'Invalid JSON array',
-      })
-    }
-  }),
+  GroupGroupRatio: z.string(),
+  AutoGroups: z.string(),
   DefaultUseAutoGroup: z.boolean(),
-  GroupSpecialUsableGroup: z.string().superRefine((value, ctx) => {
-    const result = validateJsonString(value)
-    if (!result.valid) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: result.message || 'Invalid JSON',
-      })
-    }
-  }),
+  GroupSpecialUsableGroup: z.string(),
 })
 
 type ModelFormValues = z.infer<typeof modelSchema>

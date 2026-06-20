@@ -39,13 +39,27 @@ func InitChannelCache() {
 	for group := range groups {
 		newGroup2model2channels[group] = make(map[string][]int)
 	}
+	// Simplified group model: every channel serves ALL known groups, so
+	// admin never needs to assign groups to channels. Seed every known group
+	// (from group ratio config, the single source of truth) with an empty
+	// model->channels map so routing works for any user group from the start.
+	for _, group := range allChannelGroups() {
+		if _, ok := newGroup2model2channels[group]; !ok {
+			newGroup2model2channels[group] = make(map[string][]int)
+		}
+	}
+	// Ensure a generic entry exists so a channel with no explicit group can
+	// still be discovered when needed.
+	if _, ok := newGroup2model2channels[""]; !ok {
+		newGroup2model2channels[""] = make(map[string][]int)
+	}
 	for _, channel := range channels {
 		if channel.Status != common.ChannelStatusEnabled {
 			continue // skip disabled channels
 		}
-		groups := strings.Split(channel.Group, ",")
-		for _, group := range groups {
-			models := strings.Split(channel.Models, ",")
+		models := strings.Split(channel.Models, ",")
+		// Serve every known group with this channel's models.
+		for _, group := range allChannelGroups() {
 			for _, model := range models {
 				if _, ok := newGroup2model2channels[group][model]; !ok {
 					newGroup2model2channels[group][model] = make([]int, 0)
@@ -106,7 +120,23 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 	// First, try to find channels with the exact model name.
 	channels := group2model2channels[group][model]
 
-	// If no channels found, try to find channels with the normalized model name.
+	// Simplified group model: every channel serves all groups. If the
+	// requested group isn't in the cache, fall back to any group that has the
+	// model so routing never breaks just because a group was added after the
+	// last cache build.
+	if len(channels) == 0 {
+		for g, model2channels := range group2model2channels {
+			if g == group {
+				continue
+			}
+			if cand := model2channels[model]; len(cand) > 0 {
+				channels = cand
+				break
+			}
+		}
+	}
+
+	// If still no channels found, try to find channels with the normalized model name.
 	if len(channels) == 0 {
 		normalizedModel := ratio_setting.FormatMatchingModelName(model)
 		channels = group2model2channels[group][normalizedModel]

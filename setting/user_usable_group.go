@@ -9,7 +9,6 @@ import (
 
 var userUsableGroups = map[string]string{
 	"default": "Nhóm mặc định",
-	"vip":     "Nhóm VIP",
 }
 var userUsableGroupsMutex sync.RWMutex
 

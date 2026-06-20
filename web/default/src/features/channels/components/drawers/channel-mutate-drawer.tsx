@@ -110,7 +110,6 @@ import {
   getAllModels,
   getChannel,
   getChannelKey,
-  getGroups,
   getPrefillGroups,
   refreshCodexCredential,
 } from '../../api'
@@ -313,11 +312,6 @@ export function ChannelMutateDrawer({
     enabled: isEditing && Boolean(currentRow?.id),
   })
 
-  // Fetch available groups
-  const { data: groupsData, isLoading: isLoadingGroups } = useQuery({
-    queryKey: ['groups'],
-    queryFn: getGroups,
-  })
 
   // Fetch all available models
   const { data: allModelsData } = useQuery({
@@ -367,7 +361,6 @@ export function ChannelMutateDrawer({
   const multiKeyMode = form.watch('multi_key_mode')
   const multiKeyType = form.watch('multi_key_type')
   const keyMode = form.watch('key_mode')
-  const currentGroups = form.watch('group')
   const currentType = form.watch('type')
   const currentBaseUrl = form.watch('base_url')
   const currentModels = form.watch('models')
@@ -425,15 +418,6 @@ export function ChannelMutateDrawer({
     [prefillGroupsData]
   )
 
-  // Transform groups to multi-select options
-  const groupOptions = useMemo(() => {
-    if (!groupsData?.data) return []
-    const allGroups = new Set([...groupsData.data, ...(currentGroups || [])])
-    return Array.from(allGroups).map((group) => ({
-      value: group,
-      label: group,
-    }))
-  }, [groupsData, currentGroups])
 
   // Parse current models as array
   const currentModelsArray = useMemo(
@@ -2465,35 +2449,6 @@ export function ChannelMutateDrawer({
                         />
                       </div>
 
-                      <div className='border-border/60 rounded-lg border p-4'>
-                        <FormField
-                          control={form.control}
-                          name='group'
-                          render={({ field }) => (
-                            <FormItem className='space-y-3'>
-                              <div className='space-y-1'>
-                                <FormLabel>{t('Groups *')}</FormLabel>
-                                <FormDescription>
-                                  {t(FIELD_DESCRIPTIONS.GROUP)}
-                                </FormDescription>
-                              </div>
-                              <FormControl>
-                                {isLoadingGroups ? (
-                                  <Skeleton className='h-10 w-full' />
-                                ) : (
-                                  <MultiSelect
-                                    options={groupOptions}
-                                    selected={field.value}
-                                    onChange={field.onChange}
-                                    placeholder={t(FIELD_PLACEHOLDERS.GROUP)}
-                                  />
-                                )}
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
                     </div>
                   </ChannelModelsSection>
 

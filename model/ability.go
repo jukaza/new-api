@@ -7,11 +7,36 @@ import (
 	"sync"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/samber/lo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
+
+// allChannelGroups returns every group a channel should serve.
+//
+// Per the simplified group model, every channel automatically serves ALL
+// known groups, so admins never need to assign groups to channels/models
+// manually. Groups come from the group ratio config (the single source of
+// truth for which groups exist). "default" is always guaranteed so routing
+// keeps working even before any group ratio is configured.
+func allChannelGroups() []string {
+	groups := ratio_setting.GetGroupRatioCopy()
+	result := make([]string, 0, len(groups)+1)
+	seen := make(map[string]bool, len(groups)+1)
+	for name := range groups {
+		name = strings.TrimSpace(name)
+		if name != "" && !seen[name] {
+			seen[name] = true
+			result = append(result, name)
+		}
+	}
+	if !seen["default"] {
+		result = append(result, "default")
+	}
+	return result
+}
 
 type Ability struct {
 	Group     string  `json:"group" gorm:"type:varchar(64);primaryKey;autoIncrement:false"`
@@ -42,12 +67,16 @@ func GetAllEnableAbilityWithChannels() ([]AbilityWithChannel, error) {
 
 func GetGroupEnabledModels(group string) []string {
 	var models []string
-	// Find distinct models
+	// Find distinct models.
+	// Simplified group model: every channel serves all groups, so we no
+	// longer filter abilities by group; the same model set is available to
+	// every group.
+	_ = group
 	DB.Table("abilities").
 		Select("DISTINCT abilities.model").
 		Joins("left join models on abilities.model = models.model_name and models.deleted_at is null").
 		Joins("left join models as all_models on abilities.model = all_models.model_name").
-		Where("abilities."+commonGroupCol+" = ? and abilities.enabled = ? and (all_models.id is null or models.status = 1)", group, true).
+		Where("abilities.enabled = ? and (all_models.id is null or models.status = 1)", true).
 		Pluck("model", &models)
 	return models
 }
@@ -73,9 +102,12 @@ func GetAllEnableAbilities() []Ability {
 func getPriority(group string, model string, retry int) (int, error) {
 
 	var priorities []int
+	// Simplified group model: every channel serves all groups, so we no longer
+	// filter abilities by group.
+	_ = group
 	err := DB.Model(&Ability{}).
 		Select("DISTINCT(priority)").
-		Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, model, true).
+		Where("model = ? and enabled = ?", model, true).
 		Order("priority DESC").              // 按优先级降序排序
 		Pluck("priority", &priorities).Error // Pluck用于将查询的结果直接扫描到一个切片中
 
@@ -101,14 +133,18 @@ func getPriority(group string, model string, retry int) (int, error) {
 }
 
 func getChannelQuery(group string, model string, retry int) (*gorm.DB, error) {
-	maxPrioritySubQuery := DB.Model(&Ability{}).Select("MAX(priority)").Where(commonGroupCol+" = ? and model = ? and enabled = ?", group, model, true)
-	channelQuery := DB.Where(commonGroupCol+" = ? and model = ? and enabled = ? and priority = (?)", group, model, true, maxPrioritySubQuery)
+	// Simplified group model: every channel serves all groups, so we no longer
+	// filter abilities by group. We keep the `group` argument in the signature
+	// for compatibility with callers, but it is intentionally not used here.
+	_ = group
+	maxPrioritySubQuery := DB.Model(&Ability{}).Select("MAX(priority)").Where("model = ? and enabled = ?", model, true)
+	channelQuery := DB.Where("model = ? and enabled = ? and priority = (?)", model, true, maxPrioritySubQuery)
 	if retry != 0 {
 		priority, err := getPriority(group, model, retry)
 		if err != nil {
 			return nil, err
 		} else {
-			channelQuery = DB.Where(commonGroupCol+" = ? and model = ? and enabled = ? and priority = ?", group, model, true, priority)
+			channelQuery = DB.Where("model = ? and enabled = ? and priority = ?", model, true, priority)
 		}
 	}
 
@@ -157,9 +193,9 @@ func GetChannel(group string, model string, retry int) (*Channel, error) {
 
 func (channel *Channel) AddAbilities(tx *gorm.DB) error {
 	models_ := strings.Split(channel.Models, ",")
-	groups_ := strings.Split(channel.Group, ",")
+	groups_ := allChannelGroups()
 	abilitySet := make(map[string]struct{})
-	abilities := make([]Ability, 0, len(models_))
+	abilities := make([]Ability, 0, len(models_)*len(groups_))
 	for _, model := range models_ {
 		for _, group := range groups_ {
 			key := group + "|" + model
@@ -230,9 +266,9 @@ func (channel *Channel) UpdateAbilities(tx *gorm.DB) error {
 
 	// Then add new abilities
 	models_ := strings.Split(channel.Models, ",")
-	groups_ := strings.Split(channel.Group, ",")
+	groups_ := allChannelGroups()
 	abilitySet := make(map[string]struct{})
-	abilities := make([]Ability, 0, len(models_))
+	abilities := make([]Ability, 0, len(models_)*len(groups_))
 	for _, model := range models_ {
 		for _, group := range groups_ {
 			key := group + "|" + model

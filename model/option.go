@@ -528,6 +528,15 @@ func updateOptionMap(key string, value string) (err error) {
 		err = ratio_setting.UpdateModelRatioByJSONString(value)
 	case "GroupRatio":
 		err = ratio_setting.UpdateGroupRatioByJSONString(value)
+		// Channels now serve ALL groups automatically, so when the set of
+		// groups changes we must refresh the in-memory channel cache and
+		// abilities so newly created groups immediately route to existing
+		// channels without requiring a per-channel re-save.
+		if err == nil {
+			go func() {
+				_, _, _ = FixAbility()
+			}()
+		}
 	case "GroupGroupRatio":
 		err = ratio_setting.UpdateGroupGroupRatioByJSONString(value)
 	case "UserUsableGroups":

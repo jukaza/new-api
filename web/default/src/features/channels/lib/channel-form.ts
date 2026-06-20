@@ -128,7 +128,10 @@ export const channelFormSchema = z
     key: z.string(),
     openai_organization: z.string().optional(),
     models: z.string().min(1, ERROR_MESSAGES.REQUIRED_MODELS),
-    group: z.array(z.string()).min(1, ERROR_MESSAGES.REQUIRED_GROUP),
+    // Simplified group model: channels serve ALL groups automatically, so
+    // we no longer require/collect groups per channel. The field is kept as
+    // an optional internal placeholder and defaults to empty.
+    group: z.array(z.string()).optional(),
     model_mapping: z
       .string()
       .optional()
@@ -407,7 +410,7 @@ export function transformChannelToFormDefaults(
     key: '', // Never populate key from backend for security
     openai_organization: channel.openai_organization || '',
     models: channel.models || '',
-    group: parseGroups(channel.group || 'default'),
+    group: ['default'],
     model_mapping: channel.model_mapping || '',
     priority: channel.priority || 0,
     weight: channel.weight || 0,
@@ -594,7 +597,9 @@ export function transformFormDataToCreatePayload(formData: ChannelFormValues): {
     key: formData.key,
     openai_organization: formData.openai_organization || null,
     models: formData.models,
-    group: formatGroups(formData.group),
+    // Simplified group model: channels serve all groups, so always send the
+    // default group value. The backend ignores this for routing.
+    group: 'default',
     model_mapping: formData.model_mapping || null,
     priority: formData.priority || null,
     weight: formData.weight || null,
@@ -642,7 +647,8 @@ export function transformFormDataToUpdatePayload(
     base_url: normalizeBaseUrl(formData.base_url) || null,
     openai_organization: formData.openai_organization || null,
     models: formData.models,
-    group: formatGroups(formData.group),
+    // Simplified group model: channels serve all groups.
+    group: 'default',
     model_mapping: formData.model_mapping || null,
     priority: formData.priority ?? 0,
     weight: formData.weight ?? 0,

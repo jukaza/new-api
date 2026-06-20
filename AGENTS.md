@@ -148,3 +148,36 @@ Các thông tin liên quan đến dự án sau đây được **bảo vệ nghi�
 ### Quy tắc 7: Hệ thống biểu thức tính phí (Billing Expression System) — Đọc `pkg/billingexpr/expr.md`
 
 Khi làm việc với hệ thống tính giá theo bậc/động (pricing dựa trên biểu thức), bạn BẮT BUỘC phải đọc tài liệu `pkg/billingexpr/expr.md` trước tiên. Tài liệu đó mô tả triết lý thiết kế, ngôn ngữ biểu thức (các biến, hàm số, ví dụ thực tế), kiến trúc toàn diện của hệ thống (trình biên tập -> lưu trữ -> tính phí trước -> quyết toán -> hiển thị nhật ký), quy tắc chuẩn hóa token (tự động loại trừ `p`/`c`), quy đổi hạn ngạch và quản lý phiên bản biểu thức. Tất cả thay đổi đối với hệ thống biểu thức tính phí phải tuân theo các mẫu được tài liệu đó hướng dẫn.
+
+### Quy tắc 8: Xây dựng (Build) tối ưu tài nguyên và tránh tràn bộ nhớ (RAM)
+
+Khi tiến hành biên dịch/build phần Frontend (`web/default/`), nếu cấu hình máy chủ local yếu hoặc bị giới hạn RAM, cần tuân thủ:
+- **Chỉ build khi có thay đổi thực tế ở frontend**: Không tự động chạy lại lệnh build của frontend nếu chỉ thay đổi backend Go.
+- **Sử dụng Rsbuild thuần**: Lệnh build mặc định `bun run build` chạy `rsbuild build` (sử dụng trình biên dịch Rspack viết bằng Rust), có tốc độ cực nhanh và tiết kiệm tài nguyên hơn Webpack/Vite rất nhiều.
+- **Hạn chế type checking khi không cần thiết**: Tránh chạy `bun run build:check` (lệnh này chạy thêm `tsc` để kiểm tra kiểu dữ liệu, tiêu tốn rất nhiều RAM). Chỉ chạy `bun run build`.
+- **Cấu hình giới hạn bộ nhớ Node.js (nếu cần)**: Thêm biến môi trường giới hạn bộ nhớ cũ của V8:
+  ```bash
+  NODE_OPTIONS="--max-old-space-size=1024" bun run build
+  ```
+
+### Quy tắc 9: Quy trình Deploy ứng dụng lên VPS chạy PM2
+
+Khi muốn deploy bản build mới lên VPS (`180.93.59.22`):
+1. **Biên dịch**: Tạo file thực thi cục bộ:
+   ```bash
+   go build -o new-api
+   ```
+2. **Tải lên VPS**: Sử dụng kết nối SFTP, tải file binary lên một đường dẫn tạm (ví dụ `/root/new-api/new-api.new`) để tránh lỗi **"Text file busy"** nếu ghi đè trực tiếp lên file đang chạy.
+3. **Cập nhật & Khởi chạy**: Thực thi qua SSH các lệnh sau để cập nhật dịch vụ một cách an toàn:
+   ```bash
+   # Dừng dịch vụ PM2 hiện tại
+   pm2 stop new-api
+   
+   # Thay thế file thực thi chính bằng file mới tải lên
+   mv /root/new-api/new-api.new /root/new-api/new-api
+   chmod +x /root/new-api/new-api
+   
+   # Chạy lại dịch vụ
+   pm2 start new-api
+   ```
+

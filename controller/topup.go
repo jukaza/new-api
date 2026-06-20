@@ -450,10 +450,11 @@ func EpayNotify(c *gin.Context) {
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 			var quotaToAdd int
 			if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeCustom {
-				dPrice := decimal.NewFromFloat(operation_setting.Price)
-				if dPrice.IsZero() {
-					dPrice = decimal.NewFromFloat(1)
+				exchangeRate := operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate
+				if exchangeRate <= 0 {
+					exchangeRate = 1
 				}
+				dPrice := decimal.NewFromFloat(exchangeRate)
 				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).Div(dPrice).IntPart())
 			} else {
 				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
@@ -658,10 +659,11 @@ func SepayNotify(c *gin.Context) {
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 		var quotaToAdd int
 		if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeCustom {
-			dPrice := decimal.NewFromFloat(operation_setting.Price)
-			if dPrice.IsZero() {
-				dPrice = decimal.NewFromFloat(1)
+			exchangeRate := operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate
+			if exchangeRate <= 0 {
+				exchangeRate = 1
 			}
+			dPrice := decimal.NewFromFloat(exchangeRate)
 			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).Div(dPrice).IntPart())
 		} else {
 			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())

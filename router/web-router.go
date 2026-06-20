@@ -3,6 +3,7 @@ package router
 import (
 	"embed"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -32,6 +33,37 @@ func SetWebRouter(router *gin.Engine, assets ThemeAssets) {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(middleware.GlobalWebRateLimit())
 	router.Use(middleware.Cache())
+
+	// Middleware phục vụ tài liệu trực tiếp từ ổ đĩa thực (local disk) nếu tồn tại
+	router.Use(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		if strings.HasPrefix(path, "/docs/") {
+			hasExt := false
+			if dot := strings.LastIndex(path, "."); dot > -1 && dot > strings.LastIndex(path, "/") {
+				hasExt = true
+			}
+
+			if hasExt {
+				// Thử tìm ở ./docs/... trước
+				filePath := "." + path
+				if _, err := os.Stat(filePath); err == nil {
+					c.File(filePath)
+					c.Abort()
+					return
+				}
+
+				// Thử tìm ở ./dist/docs/...
+				filePathDist := "./dist" + path
+				if _, err := os.Stat(filePathDist); err == nil {
+					c.File(filePathDist)
+					c.Abort()
+					return
+				}
+			}
+		}
+		c.Next()
+	})
+
 	router.Use(static.Serve("/", themeFS))
 	router.NoRoute(func(c *gin.Context) {
 		c.Set(middleware.RouteTagKey, "web")

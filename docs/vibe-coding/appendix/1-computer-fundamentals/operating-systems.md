@@ -1,106 +1,106 @@
-# Hệ điều hành: Thuê một "Quản lý lớn" cho máy tính
+# He dieu hanh: Thue mot "Quan ly lon" cho may tinh
 
-::: tip Lời nói đầu
-**Có CPU hoàn hảo và bộ nhớ vô hạn, máy tính có thể sử dụng ngay được không?**
-Trong chương trước, chúng ta đã chứng kiến transistor kết hợp thành CPU mạnh mẽ như thế nào. Nhưng ngay cả khi bạn có phần cứng tốt nhất, nếu để chúng làm việc trực tiếp, chỉ để hiển thị một chữ cái trên màn hình cũng cần viết hàng trăm dòng lệnh máy tính khó hiểu. Không chỉ phức tạp, còn cực kỳ nguy hiểm -- chỉ cần một sai sót nhỏ, code của bạn có thể ghi đè dữ liệu của người khác.
+::: tip Loi noi dau
+**Co CPU hoan hao va bo nho vo han, may tinh co the su dung ngay duoc khong?**
+Trong chuong truoc, chung ta da chung kien transistor ket hop thanh CPU manh me nhu the nao. Nhung ngay ca khi ban co phan cung tot nhat, neu de chung lam viec truc tiep, chi de hien thi mot chu cai tren man hinh cung can viet hang tram dong lenh may tinh kho hieu. Khong chi phuc tap, con cuc ky nguy hiem -- chi can mot sai sot nho, code cua ban co the ghi de du lieu cua nguoi khac.
 
-Để giải quyết những cơn ác mộng này, **Hệ điều hành (Operating System, OS)** ra đời. Nó là lớp "phần mềm" vĩ đại nhất giữa bạn và phần cứng lạnh lẽo. Chương này sẽ bỏ qua code sâu, dùng ví dụ đơn giản để xem "sếp quản lý" này thu phục phần cứng hỗn loạn như thế nào.
+De giai quyet nhung con ac mong nay, **He dieu hanh (Operating System, OS)** ra doi. No la lop "phan mem" vi dai nhat giua ban va phan cung lanh leo. Chuong nay se bo qua code sau, dung vi du don gian de xem "siep quan ly" nay thu phuc phan cung loan nhu the nao.
 :::
 
-**Bài viết này sẽ giúp bạn học gì?**
+**Bai viet nay se giup ban hoc gi?**
 
-Sau khi học xong chương này, bạn sẽ có được:
+Sau khi hoc xong chuong nay, ban se co duoc:
 
-- **Khả năng phân tích vấn đề**: khi gặp "chương trình bị treo" hoặc "không đủ bộ nhớ", có thể phân tích nguyên nhân từ góc độ hệ điều hành.
-- **Hiểu sâu về thuật ngữ**: hiểu "đa tiến trình", "bộ nhớ ảo", "quyền tệp" giải quyết vấn đề gì.
-- **Tư duy hệ thống**: hiểu chương trình không chạy độc lập mà tương tác chặt chẽ với hệ điều hành, tiến trình khác và tài nguyên phần cứng.
-- **Nền tảng cho việc học sâu**: đặt nền tảng cho lập trình song song, điều chỉnh hệ thống, công nghệ container.
+- **Kha nang phan tich van de**: khi gap "chuong trinh bi treo" hoac "khong du bo nho", co the phan tich nguyen nhan tu goc do he dieu hanh
+- **Hieu sau ve thuat ngu**: hieu "da tien trinh", "bo nho ao", "quyen tep" giai quyet van de gi
+- **Tu duy he thong**: hieu chuong trinh khong chay doc lap ma tuong tac chat che voi he dieu hanh, tien trinh khac va tai nguyen phan cung
+- **Nen tang cho viec hoc sau**: dat nen tang cho lap trinh song song, dieu chinh he thong, cong nghe container
 
-| Chương | Nội dung | Khái niệm cốt lõi |
+| Chuong | Noi dung | Khai niem cot loi |
 |-----|------|---------|
-| **Chương 1** | Quản lý tiến trình | Đa hóa thời gian CPU, vòng quay thời gian |
-| **Chương 2** | Quản lý bộ nhớ | Bộ nhớ ảo, cơ chế phân trang |
-| **Chương 3** | Hệ thống tệp | Tổ chức tệp, cấu trúc thư mục |
+| **Chuong 1** | Quan ly tien trinh | Da hoa thoi gian CPU, vong quay thoi gian |
+| **Chuong 2** | Quan ly bo nho | Bo nho ao, co che phan trang |
+| **Chuong 3** | He thong tep | To chuc tep, cau truc thu muc |
 
 ---
 
-## 0. Toàn cảnh: Sẽ như thế nào nếu không có hệ điều hành?
+## 0. Toan canh: Se nhu the nao khong co he dieu hanh?
 
-Tưởng tượng bạn mở một "nhà máy tính toán" tiềm năng vượt trội (máy tính của bạn), với một nhân viên xuất sắc không bao giờ mệt mỏi (CPU), một kho lớn (bộ nhớ) và vô số container (ổ cứng).
+Tuong tuong ban mo mot "nha may tinh toan" tiem nang vuot troi (may tinh cua ban), voi mot nhan vat tot nhat khong bao gio met moi (CPU), mot kho lon (bo nho) va vo so container (o cung).
 
-Nếu bạn **không thuê** một giám đốc (hệ điều hành):
-1. **Khủng hoảng độc quyền CPU**: CPU chỉ làm được một việc lúc một. Nếu có ai đang dùng nghe nhạc, tất cả những người muốn duyệt web? Xin lỗi, phải đợi.
-2. **Tai nạn giẫm đạp bộ nhớ**: Chat và Game đều sử dụng kho (bộ nhớ). Không có bảo vệ, game có thể đè dữ liệu trang bị vào hộp của ứng dụng Chat, gây crash ngay lập tức.
-3. **Mê cung ổ cứng**: Phần cứng ổ cứng chỉ là đĩa ghi đầy 0 và 1. Để tìm ảnh hôm qua, bạn phải nhớ chính xác "mặt 1, rãnh 56, sector 8" -- không ai nhớ được tọa độ phi nhân loại như vậy.
+Neu ban **khong thue** mot giam doc (he dieu hanh):
+1. **Khuynh hai doc quyen CPU**: CPU chi lam duoc mot viec luc mot. Neu ai dang dung nghe nhac, tat ca nhung nguoi muon duyet web? Xin loi, phai doi.
+2. **Tai nan dam dap bo nho**: WeChat va game deu su dung kho (bo nho). Khong co bao ve, game co the de du lieu trang bi vao hop cua WeChat, gay crash ngay lap tuc.
+3. **Me cung o cung**: Phan cung o cung chi la dia ghi day 0 va 1. De tim anh hom qua, ban phai nho chinh xac "mat 1, rong 56, section 8" -- khong ai nho duoc toa do phi nhan nhu vay.
 
 <OSArchitectureDemo />
 
-Để giải quyết ba cơn ác mộng trên, hệ điều hành đưa ra ba vũ khí chính: **quản lý tiến trình**, **quản lý bộ nhớ** và **hệ thống tệp**.
+De giai quyet ba con ac mong tren, he dieu hanh dua ra ba vu khi chinh: **quan ly tien trinh**, **quan ly bo nho** va **he thong tep**.
 
 ---
 
-## 1. Quản lý tiến trình: Đa hóa thời gian của CPU
+## 1. Quan ly tien trinh: Da hoa thoi gian cua CPU
 
-Bạn thường dùng máy tính với ứng dụng Chat mở, nghe nhạc, và gõ chữ. Nhưng nếu máy chỉ có một nhân CPU, làm sao nó làm ba việc này cùng lúc?
+Ban thuong dung may tinh voi WeChat mo, nghe nhac, va go chu. Nhung neu may chi co mot nhan CPU, lam sao no lam ba viec nay cung luc?
 
-Đáp án: **Nó không làm cùng lúc. Mà hệ điều hành đang "quản lý thời gian" điên cuồng.**
+Dap an: **No khong lam cung luc. Ma he dieu hanh dang "quan ly thoi gian" dien cu.**
 
 <ProcessDemo />
 
-### 1.1 "Tiến trình" là gì?
-Mỗi chương trình đang chạy được gọi là một **tiến trình**. Bạn có thể hiểu như một "nhóm dự án", với code riêng (danh sách công việc), dữ liệu bộ nhớ riêng (vốn dự án), đợi gặp CPU.
+### 1.1 "Tien trinh" la gi?
+Moi chuong trinh dang chay duoc goi la mot **tien trinh**. Ban co the hieu nhu mot "nhom du an", voi code rieng (danh sach cong viec), du lieu bo nho rieng (von du an), doi gap CPU.
 
-### 1.2 Vòng quay thời gian
-Để không để phần mềm độc quyền CPU, hệ điều hành cắt thời gian CPU thành mảnh rất nhỏ (khoảng 10 ms), phân phối luân phiên cho các tiến trình. Vì chuyển đổi quá nhanh, bạn cảm thấy "chạy cùng lúc".
+### 1.2 Vong quay thoi gian
+De khong de phan mem ac quyen doc quyen CPU, he dieu hanh cat thoi gian CPU thanh manh rat nho (khoang 10 ms), phan phoi luon phien cho cac tien trinh. Vi chuyen doi qua nhanh, ban cam thay "chay cung luc".
 
 ---
 
-## 2. Quản lý bộ nhớ: Không gian địa chỉ ảo
+## 2. Quan ly bo nho: Khong gian dia chi ao
 
-Giải quyết vấn đề chia CPU, tiếp theo là không gian bộ nhớ. Không có quản lý, tất cả phần mềm ghi trực tiếp vào bộ nhớ vật lý, sẽ xảy ra **giẫm đạp lẫn nhau**.
+Giai quyet van de chia CPU, tiep theo la khong gian bo nho. Khong co quan ly, tat ca phan mem ghi truc tiep vao bo nho vat ly, se xay ra **dam dap lan nhau**.
 
 <MemoryDemo />
 
-### 2.1 Bộ nhớ ảo (Virtual Memory)
-Hệ điều hành nói dối với mỗi tiến trình: "Này, bạn độc quyền toàn bộ bộ nhớ khả dụng của toàn máy, dùng thoải mái!"
+### 2.1 Bo nho ao (Virtual Memory)
+He dieu hanh noi doi voi moi tien trinh: "Nay, ban doc quyen toan bo bo nho kha dung cua toan may, dung thoai mai!"
 
-Trong mắt tiến trình, bộ nhớ của mình luôn **liên tục** và **sạch sẽ**. Nó yên tâm ghi dữ liệu vào đó.
+Trong mat tien trinh, bo nho cua minh luon **lien tuc** va **sach se**. No yen tam ghi du lieu vao do.
 
-### 2.2 Bảng trang (Page Table)
-Thực tế? Hệ điều hành lén lút nhét dữ liệu vào **bộ nhớ vật lý thực** trong các khe hổng lẻ tẻ. Điều này có hai lợi ích tuyệt vời:
-1. **An toàn tuyệt đối**: Ứng dụng Chat chỉ thấy không gian của mình, không thể sửa dữ liệu của người khác.
-2. **Tiếp thu mạnh**: dù bộ nhớ vật lý có rối rắm, không gian ảo cho tiến trình vẫn ngay ngắn.
+### 2.2 Bang trang (Page Table)
+Thuc te? He dieu hanh偷偷 nhet du lieu vao **bo nho vat ly thuc** trong cac khe hong le tung. Dieu nay co hai loi ich tuyet voi:
+1. **An toan tuyet doi**: WeChat chi thay khong gian cua minh, khong the sua du lieu cua nguoi khac
+2. **Tiep thu manh**: du bo nho vat ly co roi, khong gian ao cho tien trinh van ngay ngan
 
 ---
 
-## 3. Hệ thống tệp: Tổ chức lưu trữ lâu dài
+## 3. He thong tep: To chuc luu tru lau dai
 
-Nếu bạn mua một ổ cứng mới, nó chỉ là vùng lưu trống hoang tàn. Nếu bạn muốn lưu một bức ảnh, ổ cứng chỉ hỏi: "Cho tôi biết bạn muốn lưu ở byte thứ mấy?"
+Neu ban mua mot o cung moi, no chi la vung luu trong hoang tat. Neu ban muon luu mot buc anh, o cung chi hoi: "Cho toi biet ban muon luu o byte thu may?"
 
 <FilesystemDemo />
 
-### 3.1 Hệ thống tệp làm gì?
-1. **Cắt ổ cứng**: Chia ổ cứng thành vô số **khối** có kích thước cố định (thường là 4KB).
-2. **Tạo sổ kế toán**: Ghi khối nào đầy, khối nào trống.
-3. **Dịch đường dẫn**: Chuyển `D:/Anh/ThuCung.jpg` thành "khối 3, 7, 11".
+### 3.1 He thong tep lam gi?
+1. **Cat o cung**: Chia o cung thanh vo so **khoi** co kich thuoc co dinh (thuong la 4KB)
+2. **Tao so ke**: Ghi khoi nao day, khoi nao trong
+3. **Dich duong dan**: Chuyen `D:/Anh/ThuCung.jpg` thanh "khoi 3, 7, 11"
 
-Vì vậy đổi tên tệp hoàn thành ngay lập tức (chỉ đổi tên trong sổ), còn sao chép tệp mất lâu (phải đọc ghi khối dữ liệu thực).
+Vi vay doi ten tep hoan thanh ngay lap tuc (chi doi ten trong so ke), con sao chep tep mat lau (phai doc ghi khoi du lieu thuc).
 
 ---
 
-## 4. Phối hợp của ba: Quá trình khởi động chương trình hoàn chỉnh
+## 4. Phoi hop cua ba: Qua trinh khoi dong chuong trinh hoan chinh
 
-Chúng ta đã hiểu ba module chính của hệ điều hành. Hãy xem chúng phối hợp như thế nào khi bạn **nhấn đúp để mở một chương trình**:
+Chung ta da hieu ba module chinh cua he dieu hanh. Hay xem chung phoi hop nhu the nao khi ban **nhan doi de mo mot chuong trinh**:
 
 <ProgramLaunchDemo />
 
-Dù bạn nhấn icon trên màn hình hay viết `print("Hello World")` trong code, đều phụ thuộc vào thao tác phức tạp này. Vì chúng ta có thể lướt web dễ dàng trong thế giới số là nhờ hệ điều hành làm việc khó thấy dưới đáy.
+Du ban nhan icon tren man hinh hay viet `print("Hello World")` trong code, deu phu thuoc vao thao tac oc phuc tap nay. Vi chung ta co the lướt web de dang trong the gioi so la nho he dieu hanh lam viec kho thay duoi day.
 
 ---
 
-## Đọc thêm
+## Doc them
 
-Nếu bạn thấy các "kỹ thuật quản lý và lừa dối" của hệ điều hành rất thú vị, bạn có thể tìm hiểu các chủ đề nâng cao:
-- **Tiến trình và tiểu trình (Thread)**: Nếu tiến trình là nhóm dự án, thì "tiểu trình" là nhân viên làm việc trong nhóm.
-- **Song song và khóa**: Khi hai tiến trình cùng tranh tài nguyên, cách ngăn deadlock.
-- **Lời gọi hệ thống (System Call)**: "Cửa sổ dịch vụ" hệ điều hành cung cấp cho ứng dụng.
+Neu ban thay cac "ky thuat quan ly va lua doi" cua he dieu hanh rat thu vi, ban co the tim hieu cac chu de nang cao:
+- **Tien trinh va tieu trinh**: Neu tien trinh la nhom du an, thi "tieu trinh" la nhan vien lam viec trong nhom
+- **Song song va khoa**: Khi hai tien trinh cung tranh tai nguyen, cach ngan deadlock
+- **Loi goi he thong**: "Cua so dich vu" he dieu hanh cung cap cho ung dung

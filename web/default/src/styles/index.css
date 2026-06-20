@@ -38,6 +38,28 @@ For commercial licensing, please contact support@quantumnous.com
     font-weight: var(--shiki-dark-font-weight) !important;
     text-decoration: var(--shiki-dark-text-decoration) !important;
   }
+
+  /* Vitepress custom containers / alert blocks */
+  .custom-block {
+    @apply border-l-4 p-4 my-6 rounded-r-lg text-sm leading-relaxed;
+  }
+  .custom-block .custom-block-title {
+    @apply font-bold mb-1 text-xs uppercase tracking-wider block;
+  }
+  
+  .custom-block.tip {
+    @apply border-emerald-500 bg-emerald-500/10 dark:bg-emerald-500/5 text-emerald-800 dark:text-emerald-300;
+  }
+  .custom-block.warning {
+    @apply border-amber-500 bg-amber-500/10 dark:bg-amber-500/5 text-amber-800 dark:text-amber-300;
+  }
+  .custom-block.danger {
+    @apply border-rose-500 bg-rose-500/10 dark:bg-rose-500/5 text-rose-800 dark:text-rose-300;
+  }
+  .custom-block.info,
+  .custom-block.note {
+    @apply border-sky-500 bg-sky-500/10 dark:bg-sky-500/5 text-sky-800 dark:text-sky-300;
+  }
 }
 
 @layer base {

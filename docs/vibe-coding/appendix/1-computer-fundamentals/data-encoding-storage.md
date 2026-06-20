@@ -1,122 +1,122 @@
-# Mã hóa và Truyền tải Dữ liệu là gì?
+# Ma hoa va Truyen tai Du lieu la gi?
 
-::: tip Lời nói đầu
-Khi bạn gửi một bức ảnh cho bạn bè, gửi tin nhắn Zalo, hoặc tải một game vài GB, những thông tin này đi qua nửa trái đất và xuất hiện nguyên vẹn trên màn hình của bạn như thế nào? Chương này tập trung vào một câu hỏi thường làm bối rối người mới: **Tại sao tệp bạn nhận lại bị lỗi mã (hiển thị ký tự lạ)?** Từ câu hỏi này, chúng ta sẽ khám phá ba trọng tâm cơ bản nhất của máy tính: **mã hóa, lưu trữ và truyền tải**.
+::: tip Loi noi dau
+Khi ban gui mot buc anh cho ban, gui tin nhan WeChat, hoac tai mot game vai GB, nhung thong tin nay di qua nua trai dat va xuat hien nguyen ven tren man hinh cua ban nhu the nao? Chuong nay tap trung vao mot cau hoi thuong lam bối rối nguoi moi: **Tai sao tep ban nhan lai bi loi ma?** Tu cau hoi nay, chung ta se kham pha ba trong tam co ban nhat cua may tinh: **ma hoa, luu tru va truyen tai**.
 :::
 
-**Bài viết này sẽ giúp bạn học gì?**
+**Bai viet nay se giup ban hoc gi?**
 
-Sau khi học xong chương này, bạn sẽ có được:
+Sau khi hoc xong chuong nay, ban se co duoc:
 
-- **Khả năng phân tích lỗi mã**: khi gặp "tệp mở ra là ký tự lạ", có thể phân tích nguyên nhân từ góc độ mã hóa.
-- **Ý thức đa nền tảng**: biết tại sao cần chú ý đến định dạng mã hóa và thứ tự byte khi trao đổi dữ liệu.
-- **Thế giới quan mã hóa**: hiểu máy tính biểu diễn mọi thứ bằng 0 và 1 như thế nào.
-- **Nền tảng cho việc học sâu hơn về sau**.
+- **Kha nang phan tich loi ma**: khi gap "tep mo ra la ky tu la", co the phan tich nguyen nhan tu goc do ma hoa
+- **Y thuc da nen tang**: biet tai sao can chu y den dinh dang ma hoa va thu tu byte khi trao doi du lieu
+- **The gioi quan ma hoa**: hieu may tinh bieu dien moi thu bang 0 va 1 nhu the nao
+- **Nen tang cho viec hoc sau**
 
-| Chương | Nội dung | Khái niệm cốt lõi |
+| Chuong | Noi dung | Khai niem cot loi |
 |-----|------|---------|
-| **Chương 1** | Mã hóa ký tự | ASCII, UTF-8, GBK |
-| **Chương 2** | Lưu trữ dữ liệu | Nhị phân, thứ tự byte |
-| **Chương 3** | Truyền tải dữ liệu | Serialize, nén |
+| **Chuong 1** | Ma hoa ky tu | ASCII, UTF-8, GBK |
+| **Chuong 2** | Luu tru du lieu | Nhi phan, thu tu byte |
+| **Chuong 3** | Truyen tai du lieu | Serialize, nen |
 
 ---
 
-## 0. Mở đầu: Tại sao tệp lại thành "văn tự cổ"?
+## 0. Mo dau: Tai sao tep lai thanh "van tu co"?
 
-Tưởng tượng bạn nhận được một tệp quan trọng từ đồng nghiệp, mở ra thấy toàn ký tự lạ như "浣犲ソ" hoặc "ä½ å¥½".
+Tuong tuong ban nhan duoc mot tep quan trong tu dong nghiep, mo ra thay toan ky tu la nhu "浣犲ソ" hoac "ä½ å¥½".
 
-Sự thật là: phần lớn "tệp hỏng" chỉ có một nguyên nhân -- **máy tính "không tìm đúng từ điển"**.
+Su that la: phan lon "tep hong" chi co mot nguyen nhan -- **may tinh "khong tim dung tu dien"**.
 
 <GarbledTextDemo />
 
-**Kiến thức cốt lõi: Từ điển không khớp**
+**Kien thuc cot loi: Tu dien khong khop**
 
-Byte (chuỗi 0 và 1) không có ý nghĩa tuyệt đối, là **quy tắc mã hóa** do con người tạo ra mới cho chúng ý nghĩa.
+Byte (chuoi 0 va 1) khong co y nghia tuyet doi, la **quy tac ma hoa** do con nguoi tao ra moi cho chung y nghia.
 
-Người gửi dùng từ điển UTF-8 để dịch hành vi thành số, bạn nếu dùng từ điển cũ để đọc những số này, kết quả tất nhiên là mã lạ.
+Nguoi gui dung tu dien UTF-8 de dich hanh tu Thanh so, ban neu dung tu dien GBK de doc nhung so nay, ket qua tat nhien la ma la.
 
 ---
 
-## 1. Mã hóa dữ liệu là gì? (Biến mọi thứ thành số)
+## 1. Ma hoa du lieu la gi? (Bien moi thu thanh so)
 
-**Mã hóa dữ liệu (Encoding)** là tạo một "từ điển hai chiều", ánh xạ thông tin thế giới thực (văn bản, màu sắc, âm thanh) thành 0 và 1.
+**Ma hoa du lieu (Encoding)** la tao mot "tu dien hai chieu", anh xa thong tin the gioi thuc (van ban, mau sac, am thanh) thanh 0 va 1.
 
-### 1.1 Từ văn bản thành số: Từ ASCII đến Unicode
+### 1.1 Tu van ban thanh so: Tu ASCII den Unicode
 
-**Giai đoạn 1**: ASCII -- chỉ 128 ký tự, đủ cho tiếng Anh.
+**Giai doan 1**: ASCII -- chi 128 ky tu, du cho tieng Anh.
 
-**Giai đoạn 2**: Thời kỳ phân tán -- mỗi quốc gia làm từ điển riêng, gây hỗn loạn.
+**Giai doan 2**: Thoi ky phan tan -- moi quoc gia lam tu dien rieng (GBK, Shift_JIS...), gay hon loan.
 
-**Giai đoạn 3**: Unicode thống nhất -- cấp số duy nhất cho mọi ký tự trên thế giới. UTF-8 là quy tắc lưu trữ phổ biến nhất: tiếng Anh 1 byte, tiếng Việt/tiếng Trung có thể từ 2-3 byte.
+**Giai doan 3**: Unicode thong nhat -- cap so duy nhat cho moi ky tu tren the gioi. UTF-8 la quy tac luu tru pho bien nhat: tieng Anh 1 byte, tieng Trung 3 byte.
 
 <CharacterEncodingExplorer />
 
-### 1.2 Màu và âm thanh thành số như thế nào?
+### 1.2 Mau va am thanh thanh so nhu the nao?
 
-* **Mã hóa hình ảnh**: Ảnh gồm hàng triệu pixel. Mỗi màu có mã số (như `#FF0000` là đỏ).
+* **Ma hoa hinh anh**: Anh gom hang trieu pixel. Moi mau co ma so (nhu `#FF0000` la do).
 <ImageEncodingDemo />
 
-* **Mã hóa âm thanh**: Âm thanh là sóng. Đo chiều cao sóng 44,100 lần/giây, ghi lại giá trị.
+* **Ma hoa am thanh**: Am thanh la song. Do chieu cao song 44,100 lan/giay, ghi lai gia tri.
 <AudioEncodingDemo />
 
 ---
 
-## 2. Cầu nối lưu trữ: Trước khi gửi, phải đặt vào đâu đó
+## 2. Cau noi luu tru: Truoc khi gui, phai dat vao dau do
 
-Sau khi mã hóa, trước khi gửi, phải lưu vào phương tiện vật lý. Có một luật sắt: **lưu trữ càng nhanh, giá càng đắt, dung lượng càng nhỏ.**
+Sau khi ma hoa, truoc khi gui, phai luu vao phuong tien vat ly. Co mot luat sat: **luu tru cang nhanh, gia cang dat, dung luong cang nho.**
 
 <StoragePyramidDemo />
 
-Hệ điều hành như một quản lý kho thông minh: lưu phim/game ở ổ cứng chậm nhưng lớn, khi chạy thì chuyển sang RAM nhanh nhưng nhỏ, khi đóng thì dọn RAM cho tệp khác.
+He dieu hanh nhu mot quan ly kho thong minh: luu phim/game o o cung cham nhung lon, khi chay thi chuyen sang RAM nhanh nho, khi dong thi don RAM cho tep khac.
 
 ---
 
-## 3. Truyền tải dữ liệu là gì? (Gửi 0 và 1 đi du lịch)
+## 3. Truyen tai du lieu la gi? (Gui 0 va 1 di du lich)
 
-### 3.1 Truyền tải phần cứng và LAN
+### 3.1 Truyen tai phan cung va LAN
 
-Trong thùng máy hoặc giữa các máy gần nhau, là **thách thức vật lý**. Ngày nay USB Type-C, PCIe dùng **truyền tải nối tiếp** (một kênh chính).
+Trong thung may hoac giua cac may gan nhau, la **thach thuc vat ly**. Ngay nay USB Type-C, PCIe dung **truyen tai noi tiep** (mot kenh chinh).
 
 <DataTransmissionDemo />
 
-### 3.2 WAN và Internet
+### 3.2 WAN va Internet
 
-Khi dữ liệu phải đi đến máy chủ ở nước khác, đi qua cáp quang biển, trạm định tuyến phân tán. Trước mắt là **thách thức sự phục hồi**.
+Khi du lieu phai di den may chu o nuoc khac, di qua cap quang bien, tram goi cu phan tan. Truoc mat la **thach thuc su phuc hoi**.
 
-1. **Cắt gói**: Mạng cắt video thành hàng nghìn gói dữ liệu (~1500 byte)
-2. **Kiểm tra (Checksum)**: Tính mã kiểm tra trước khi gửi
-3. **TCP gửi lại**: Nếu gói mất hoặc hỏng, yêu cầu gửi lại
+1. **Cat goi**: Mang cat video thanh hang nghin goi du lieu (~1500 byte)
+2. **Kiem tra (Checksum)**: Tinh ma kiem tra truoc khi gui
+3. **TCP gui lai**: Neu goi mat hoac hong, yeu cau gui lai
 
-Nhờ cơ chế **TCP** này, ngay cả WiFi không ổn định, tệp tải về luôn nguyên vẹn 100%.
+Nho co che **TCP** nay, ngay ca WiFi khong on dinh, tep tai ve luon nguyen ven 100%.
 
 ---
 
-## 4. Thực hành cuối: Từ chụp ảnh đến đăng mạng xã hội
+## 4. Thuc hanh cuoi: Tu chup anh den dang mang xa hoi
 
 <PhotoUploadJourneyDemo />
 
 ---
 
-## 5. Bảng thuật ngữ
+## 5. Bang thuat ngu
 
-| Thuật ngữ | Giải thích |
+| Thuat ngu | Giai thich |
 | :--- | :--- |
-| **Bit (b)** | Đơn vị nhỏ nhất, chỉ có thể là 0 hoặc 1 |
-| **Byte (B)** | 8 Bit gộp lại. Đơn vị cơ bản đo kích thước tệp |
-| **Character Set** | "Mục lục từ điển", định nghĩa ký tự nào tồn tại |
-| **Encoding** | "Quy tắc lưu trữ", xác định ký tự ứng với byte nào |
-| **RAM** | Bộ nhớ làm việc nhanh nhưng mất điện sẽ xóa |
-| **SSD** | Ổ cứng thể rắn, lưu trữ vĩnh viễn nhanh |
-| **Serial / Parallel** | Nối tiếp = một kênh xếp hàng; Song song = nhiều kênh cùng lúc |
-| **Checksum** | Mã kiểm tra kèm theo dữ liệu truyền |
-| **TCP** | Giao thức điều khiển truyền, đảm bảo giao hàng 100% nguyên vẹn |
+| **Bit (b)** | Don vi nho nhat, chi co the la 0 hoac 1 |
+| **Byte (B)** | 8 Bit gop lai. Don vi co ban do kich thuoc tep |
+| **Character Set** | "Muc luc tu dien", dinh nghia ky tu nao ton tai |
+| **Encoding** | "Quy tac luu tru", xac dinh ky tu ung voi byte nao |
+| **RAM** | Bo nho lam viec nhanh nhung mat dien se xoa |
+| **SSD** | O cung the thao, luu tru vinh viu nhanh |
+| **Serial / Parallel** | Noi tiep = mot kenh xep hang; Song song = nhieu kenh cung luc |
+| **Checksum** | Ma kiem tra kem theo du lieu truyen |
+| **TCP** | Giao thuc dieu khien truyen, dam bao giao hang 100% nguyen ven |
 
 ---
 
-## Tóm tắt
+## Tom tat
 
-- **Tại sao cùng tệp nhận bị mã lạ?** Dữ liệu không hỏng, chỉ là phần mềm dùng sai từ điển (vấn đề mã hóa).
-- **Tại sao dây Type-C mỏng hơn nhưng nhanh hơn?** Vì trước là nhiều xe ngựa chạy song song (song song), giờ là tàu cao tốc trên đường riêng (nối tiếp).
-- **Tại sao game lớn tải lâu?** Vì cần chuyển hàng chục GB từ ổ cứng chậm sang RAM nhanh.
+- **Tai sao cung tep nhan bi ma la?** Du lieu khong hong, chi la phan mem dung sai tu dien (van de ma hoa).
+- **Tai sao day Type-C mong hon nhung nhanh hon?** Vi truoc la nhieu xe ngua chay song song (song song), gio la tau cao toc tren duong rieng (noi tiep).
+- **Tai sao game lon tai lau?** Vi can chuyen hang chuc GB tu o cung cham sang RAM nhanh.
 
-Bản chất máy tính rất đơn giản: **chuyển đổi** (mã hóa), **lưu trữ** (giữ), và **gửi đi** (truyền tải) mọi thông tin thành xung điện.
+Ban chat may tinh rat don gian: **chuyen doi** (ma hoa), **luu tru** (giu), va **gui di** (truyen tai) moi thong tin thanh xung dien.

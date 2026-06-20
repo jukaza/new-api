@@ -158,10 +158,10 @@ function DocsLayout() {
                                     to={`/docs/vibe-coding/$`}
                                     params={{ _splat: item.slug }}
                                     className={cn(
-                                      'block w-full rounded-md px-2 py-1 text-left text-xs transition-colors',
+                                      'block w-full py-1 text-left text-xs transition-all duration-150 border-l-2 pl-2',
                                       isActive
-                                        ? 'bg-primary/15 text-primary font-medium'
-                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                                        ? 'bg-linear-to-r from-primary/15 to-primary/5 text-primary font-semibold border-primary rounded-r-md rounded-l-none'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-transparent rounded-md hover:pl-2.5 hover:border-border/40'
                                     )}
                                   >
                                     {item.title}

@@ -1,61 +1,61 @@
-# Từ Transistor đến CPU
+# Tu Transistor den CPU
 
-::: tip Lời nói đầu
-**Máy tính "tư duy" như thế nào?** Bạn có thể biết CPU là "não" của máy tính, nhưng bộ não này thực chất hoạt động ra sao? Làm sao từ kim loại và nhựa, nó lại thành thiết bị thông minh có thể thực thi chương trình và xử lý dữ liệu? Chương này sẽ dẫn bạn từ transistor cơ bản nhất đến khi hiểu nguyên lý xây dựng CPU.
+::: tip Loi noi dau
+**May tinh "tu duy" nhu the nao?** Ban co the biet CPU la "nao" cua may tinh, nhung nao nay thuc chat hoat dong ra sao? No tu kim loai va nhua lam sao thanh thiet bi thong minh co the thuc thi chuong trinh va xu ly du lieu? Chuong nay se dan ban tu transistor co ban nhat den khi hieu nguyen ly xay dung CPU.
 :::
 
-**Bài viết này sẽ giúp bạn học gì?**
+**Bai viet nay se giup ban hoc gi?**
 
-- **Hiểu thuật ngữ**: "tần số CPU", "đa nhân", "tập lệnh" không còn là bí ẩn.
-- **Góc nhìn thực thi code**: thấy một dòng code đi qua fetch, decode, execute, writeback như thế nào.
-- **Tư duy lớp trừu tượng**: hiểu mỗi lớp phục vụ lớp trên như thế nào.
+- **Hieu thuat ngu**: "tan so CPU", "da nhan", "tap lenh" khong con la bi an
+- **Goc nhin thuc thi code**: thay mot dong code di qua fetch, decode, execute, writeback
+- **Tu duy lop truu tuong**: hieu moi lop phuc vu lop tren nhu the nao
 
-| Chương | Nội dung | Khái niệm cốt lõi |
+| Chuong | Noi dung | Khai niem cot loi |
 |-----|------|---------|
-| **Chương 1** | Transistor | Công tắc của thế giới số |
-| **Chương 2** | Cổng logic | Thực hiện vật lý của logic Boolean |
-| **Chương 3** | Đơn vị chức năng | Bộ cộng, thanh ghi, multiplexer |
-| **Chương 4** | Nhân CPU | Fetch, decode, execute, writeback |
+| **Chuong 1** | Transistor | Cong tac cua the gioi so |
+| **Chuong 2** | Cong logic | Thuc hien vat ly cua logic Boolean |
+| **Chuong 3** | Don vi chuc nang | Bo cong, thanh ghi, multiplexer |
+| **Chuong 4** | Nhan CPU | Fetch, decode, execute, writeback |
 
 ---
 
-## 0. Toàn cảnh: Từ cát đến trí tuệ
+## 0. Toan canh: Tu cat den tri tue
 
-Khả năng "tư duy" của máy tính hiện đại xuất phát từ điều rất đơn giản: **công tắc**.
+Kha nang "tu duy" cua may tinh hien dai xuat phat tu dieu rat don gian: **cong tac**.
 
-Khi dòng điện chạy qua công tắc, biểu diễn là "1"; khi không chạy, là "0". Nếu có hàng tỷ công tắc như vậy, và có thể làm **đầu ra của một công tắc điều khiển công tắc khác**, có thể xây dựng mạng logic cực kỳ phức tạp.
+Khi dong dien chay qua cong tac, bieu dien la "1"; khi khong chay, la "0". Neu co hang ty cong tac nhu vay, va co the lam **dau ra cua mot cong tac dieu khien cong tac khac**, co the xay dung mang logic cuc ky phuc tap.
 
-Từ cát đến trí tuệ, có bốn cấp độ:
+Tu cat den tri tue, co bon cap:
 
-::: tip Phân tích từng lớp
-- **Lớp 1: Transistor (hàng tỷ)** -- "Công tắc" cơ bản nhất. MOSFET: áp điện vào cổng cho dòng chạy giữa nguồn và thớt.
-- **Lớp 2: Cổng logic (hàng tỷ)** -- Transistor kết nối thành AND, OR, NOT, XOR -- toán Boolean trên mạch điện.
-- **Lớp 3: Đơn vị chức năng (hàng trăm)** -- Tổ hợp cổng logic: bộ cộng, multiplexer, thanh ghi.
-- **Lớp 4: Nhân CPU (1-128 nhân)** -- Trung tâm chỉ huy: fetch, decode, execute, writeback.
+::: tip Phan tich tung lop
+- **Lop 1: Transistor (hang ty)** -- "Cong tac" co ban nhat. MOSFET: ap dien vao cong cho dong chay giua nguon va thot
+- **Lop 2: Cong logic (hang ty)** -- Transistor ket noi thanh AND, OR, NOT, XOR -- toan Boolean tren mach dien
+- **Lop 3: Don vi chuc nang (hang tram)** -- To hop cong logic: bo cong, multiplexer, thanh ghi
+- **Lop 4: Nhan CPU (1-128 nhan)** -- Trung tam chi huy: fetch, decode, execute, writeback
 :::
 
 ---
 
-## 1. Transistor: Công tắc của thế giới số
+## 1. Transistor: Cong tac cua the gioi so
 
 <TransistorDemo />
 
-### 1.1 Transistor là gì?
+### 1.1 Transistor la gi?
 
-**Transistor** là thiết bị bán dẫn có thể trừu tượng thành "công tắc" hoàn hảo:
-- **Nguồn (Source)** và **Thớt (Drain)**: như hai đầu ống nước.
-- **Cổng (Gate)**: van điều khiển dòng chảy.
+**Transistor** la thiet bi ban dan co the truu tuong thanh "cong tac" hoan hao:
+- **Nguon (Source)** va **Thot (Drain)**: nhu hai dau ong nuoc
+- **Cong (Gate)**: van dieu khien dong chay
 
-Điều khiển bằng **điện áp** thay bằng tay. Khi một công tắc có thể được điều khiển bởi tín hiệu điện của công tắc khác, chúng ta đã vượt qua khoảng cách từ "can thiệp nhân công" đến "tính toán tự động".
+Dieu khien bang **dien ap** thay bang tay. Khi mot cong tac co the duoc dieu khien boi tin hieu dien cua cong tac khac, chung ta da vuot qua khoang cach tu "can thiep nhan cong" den "tinh toan tu dong".
 
-### 1.2 Biểu diễn 0 và 1 như thế nào?
+### 1.2 Bieu dien 0 va 1 nhu the nao?
 
-- **Điện áp cao (vd: 3.3V)** = logic **1**
-- **Điện áp thấp (gần 0V)** = logic **0**
+- **Dien ap cao (vd: 3.3V)** = logic **1**
+- **Dien ap thap (gan 0V)** = logic **0**
 
-### 1.3 Tiến hóa số lượng transistor
+### 1.3 Tien hoa so luong transistor
 
-| Năm | Xử lý | Transistor | Quy trình |
+| Nam | Xu ly | Transistor | Quy trinh |
 | ---- | ---------- | ------------ | ------- |
 | 1971 | Intel 4004 | 2,300 | 10um |
 | 1993 | Intel Pentium | 3.1M | 800nm |
@@ -65,28 +65,28 @@ Từ cát đến trí tuệ, có bốn cấp độ:
 
 ---
 
-## 2. Cổng logic: Tính toán bằng công tắc
+## 2. Cong logic: Tinh toan bang cong tac
 
 <LogicGateDemo />
 
-### 2.1 Cổng cơ bản
+### 2.1 Cong co ban
 
-- **AND**: Tất cả đầu vào phải là 1 thì đầu ra mới là 1.
-- **OR**: Chỉ cần một đầu vào là 1, đầu ra là 1.
-- **NOT**: Đảo ngược đầu vào.
-- **XOR**: Đầu ra là 1 khi hai đầu vào khác nhau.
+- **AND**: Tat ca dau vao phai la 1 thi dau ra moi la 1
+- **OR**: Chi can mot dau vao la 1, dau ra la 1
+- **NOT**: Dao nguoc dau vao
+- **XOR**: Dau ra la 1 khi hai dau vao khac nhau
 
-### 2.2 Cộng bằng cổng logic
+### 2.2 Cong bang cong logic
 
-Một XOR (tính tổng) + một AND (tính nhớ) = **Bộ cộng nửa (Half Adder)**.
+Mot XOR (tinh tong) + mot AND (tinh nho) = **bo cong nua (Half Adder)**.
 
 <HalfAdderDemo />
 
-Bộ cộng nửa chỉ nhận hai đầu vào. Để cộng nhiều số cần **Bộ cộng đầy đủ (Full Adder)** nhận ba đầu vào.
+Bo cong nua chi nhan hai dau vao. De cong nhieu so can **bo cong day du (Full Adder)** nhan ba dau vao.
 
 <FullAdderDemo />
 
-Nối nhiều bộ cộng đầy đủ để cộng nhiều bit:
+Noi nhieu bo cong day du de cong nhieu bit:
 
 <AdderChainDemo />
 
@@ -94,73 +94,73 @@ Nối nhiều bộ cộng đầy đủ để cộng nhiều bit:
 
 ---
 
-## 3. Đơn vị chức năng: Tổ hợp cổng logic
+## 3. Don vi chuc nang: To hop cong logic
 
-| Module | Nhiệm vụ | Ví dụ |
+| Module | Nhiem vu | Vi du |
 | ------ | ------ | -------- |
-| **Bộ cộng** | Động cơ số học | Bàn tính không mệt |
-| **Multiplexer** | Điều khiển luồng dữ liệu | Ngành đường sắt |
-| **Giải mã** | Dịch lệnh nhị phân | Giải mã mật |
-| **Flip-Flop** | Ghi trạng thái | Cân bằng giữ vị trí |
+| **Bo cong** | Dong co so hoc | Ban tinh khong met |
+| **Multiplexer** | Dieu khien luong du lieu | Nganh duong sat |
+| **Giai ma** | Dich lenh nhi phan | Giai ma mat |
+| **Flip-Flop** | Ghi trang thai | Can bang giu vi tri |
 
 <FunctionalUnitDemo />
 
-### 3.1 Thanh ghi: Lưu trữ dữ liệu
+### 3.1 Thanh ghi: Luu tru du lieu
 
 <RegisterDemo />
 
-Bộ nhớ được tạo bằng **phản hồi**: đầu ra quay lại đầu vào, tạo vòng kín giữ trạng thái. Khi 32 hoặc 64 flip-flop được xếp hàng dưới cùng tín hiệu đồng hồ, ta có **thanh ghi**.
+Bo nho duoc tao bang **phan hoi**: dau ra quay lai dau vao, tao vong kin giu trang thai. Khi 32 hoac 64 flip-flop duoc xep hang duoi cung tin hieu dong ho, ta co **thanh ghi**.
 
 <FlipFlopDemo />
 
 ---
 
-## 4. Kiến trúc CPU: Từ đơn vị chức năng đến xử lý
+## 4. Kien truc CPU: Tu don vi chuc nang den xu ly
 
-### 4.1 Thành phần chính
+### 4.1 Thanh phan chinh
 
-- **ALU**: thực hiện phép toán.
-- **Ngăn thanh ghi**: lưu trữ tạm thời siêu nhanh.
-- **Bus nội bộ**: vận chuyển dữ liệu giữa các module.
-- **Đơn vị điều khiển**: đọc lệnh, tạo tín hiệu điều khiển.
+- **ALU**: thuc hien phep toan
+- **Ngan thanh ghi**: luu tru tam thoi sieu nhanh
+- **Bus noi bo**: van chuyen du lieu giua cac module
+- **Don vi dieu khien**: doc lenh, tao tin hieu dieu khien
 
 <MinCpuDemo />
 
-### 4.2 CPU thực thi lệnh như thế nào?
+### 4.2 CPU thuc thi lenh nhu the nao?
 
-1. **Fetch**: Đọc lệnh từ bộ nhớ.
-2. **Decode**: Phân tích thực hiện phép toán gì.
-3. **Execute**: Thực hiện phép toán tại ALU.
-4. **Write Back**: Ghi kết quả vào thanh ghi hoặc bộ nhớ.
+1. **Fetch**: Doc lenh tu bo nho
+2. **Decode**: Phan tich thuc hien phep toan gi
+3. **Execute**: Thuc hien phep toan tai ALU
+4. **Write Back**: Ghi ket qua vao thanh ghi hoac bo nho
 
 <CpuArchitectureDemo />
 
-::: tip Pipeline: Tối ưu hiệu suất tối đa
-Thay vì chờ một lệnh hoàn thành 4 bước rồi mới bắt đầu lệnh tiếp theo, **pipeline** cho phép chồng lệnh: trong khi lệnh A thực thi, lệnh B được giải mã và lệnh C được lấy về.
+::: tip Pipeline: Tim hieu suat toi da
+Thay vi cho mot lenh hoan thanh 4 buoc roi moi bat dau lenh tiep, **pipeline** cho phep chong lenh: trong khi lenh A thuc thi, B giai ma va C lay ve.
 :::
 
 ---
 
-## 5. Tóm tắt: Qua các lớp trừu tượng
+## 5. Tom tat: Qua cac lop truu tuong
 
-1. **Vật lý macro**: Cát (Silic dioxide).
-2. **Vật lý micro**: Hàng tỷ transistor.
-3. **Đại số số**: Cổng logic AND/OR/NOT.
-4. **Module vi kiến trúc**: Đơn vị chức năng.
-5. **Kiến trúc phức tạp**: CPU.
-6. **Ứng dụng**: Phần mềm và Internet.
+1. **Vat ly macro**: Cat (silic dioxide)
+2. **Vat ly micro**: Hang ty transistor
+3. **Dai so so**: Cong logic AND/OR/NOT
+4. **Module vi kien truc**: Don vi chuc nang
+5. **Kien truc phuc tap**: CPU
+6. **Ung dung**: Phan mem va Internet
 
-::: tip Suy nghĩ cuối
-**Công sức tính toán chỉ là hàng tỷ công tắc sắp xếp lại trong không gian kín; theo những nhịp đồng hồ, hoàn thành tính toán phức tạp trên mảnh silic nhỏ này.**
+::: tip suy nghi cuoi
+**Cong suc tinh toan chi la hang ty cong tac sap xep lai trong khong gian kin; theo nhung nhip dong ho, hoan thanh tinh toan phuc tap tren manh silic nho nay.**
 
-"Lượng dẫn đến chất lượng" -- câu này được chứng minh liên tục trong kiến trúc máy tính.
+"Luong dan den chat luong" -- cau nay duoc chung minh lien tuc trong kien truc may tinh.
 :::
 
 ---
 
-## Đọc thêm
+## Doc them
 
-- **Sách kinh điển**: "Computer Organization and Design" - Patterson & Hennessy
-- **Mô phỏng logic số**: Xây dựng bộ cộng 8 bit
-- **Kiến trúc nâng cao**: Cache đa cấp, thực thi ngoài trình tự, GPU
-- **Ngôn ngữ assembly**: Hiểu code cấp cao thành lệnh máy như thế nào
+- **Sach kinh dien**: "Computer Organization and Design" - Patterson & Hennessy
+- **Mo phong logic so**: Xay dung bo cong 8 bit
+- **Kien truc nang cao**: Cache da cap, thuc thi ngoai trinh tu, GPU
+- **Ngon ngu assembly**: Hieu code cap cao thanh lenh may nhu the nao

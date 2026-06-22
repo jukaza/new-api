@@ -356,16 +356,11 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 			quotaToAdd = int(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).IntPart())
 		} else {
-			dAmount := decimal.NewFromInt(topUp.Amount)
-			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 			if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeCustom {
-				exchangeRate := operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate
-				if exchangeRate <= 0 {
-					exchangeRate = 1
-				}
-				dPrice := decimal.NewFromFloat(exchangeRate)
-				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).Div(dPrice).IntPart())
+				quotaToAdd = int(topUp.Amount)
 			} else {
+				dAmount := decimal.NewFromInt(topUp.Amount)
+				dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
 			}
 		}

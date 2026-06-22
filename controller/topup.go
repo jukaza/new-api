@@ -446,17 +446,12 @@ func EpayNotify(c *gin.Context) {
 			}
 			//user, _ := model.GetUserById(topUp.UserId, false)
 			//user.Quota += topUp.Amount * 500000
-			dAmount := decimal.NewFromInt(int64(topUp.Amount))
-			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 			var quotaToAdd int
 			if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeCustom {
-				exchangeRate := operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate
-				if exchangeRate <= 0 {
-					exchangeRate = 1
-				}
-				dPrice := decimal.NewFromFloat(exchangeRate)
-				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).Div(dPrice).IntPart())
+				quotaToAdd = int(topUp.Amount)
 			} else {
+				dAmount := decimal.NewFromInt(int64(topUp.Amount))
+				dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 				quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
 			}
 			err = model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true)
@@ -655,17 +650,12 @@ func SepayNotify(c *gin.Context) {
 			return
 		}
 
-		dAmount := decimal.NewFromInt(int64(topUp.Amount))
-		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 		var quotaToAdd int
 		if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeCustom {
-			exchangeRate := operation_setting.GetGeneralSetting().CustomCurrencyExchangeRate
-			if exchangeRate <= 0 {
-				exchangeRate = 1
-			}
-			dPrice := decimal.NewFromFloat(exchangeRate)
-			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).Div(dPrice).IntPart())
+			quotaToAdd = int(topUp.Amount)
 		} else {
+			dAmount := decimal.NewFromInt(int64(topUp.Amount))
+			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
 		}
 

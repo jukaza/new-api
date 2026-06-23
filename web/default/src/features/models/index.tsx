@@ -28,6 +28,7 @@ import { listDeployments } from './api'
 import { DeploymentAccessGuard } from './components/deployment-access-guard'
 import { DeploymentsTable } from './components/deployments-table'
 import { CreateDeploymentDrawer } from './components/dialogs/create-deployment-drawer'
+import { GlobalModelMappingSection } from './components/global-model-mapping-section'
 import { ModelsDialogs } from './components/models-dialogs'
 import { ModelsPrimaryButtons } from './components/models-primary-buttons'
 import { ModelsProvider, useModels } from './components/models-provider'
@@ -48,6 +49,9 @@ const SECTION_META: Record<ModelsSectionId, { titleKey: string }> = {
   },
   deployments: {
     titleKey: 'Deployments',
+  },
+  'global-mapping': {
+    titleKey: 'Global Mapping',
   },
 }
 
@@ -144,6 +148,8 @@ function ModelsContent() {
             </Tabs>
             {activeSection === 'metadata' ? (
               <ModelsTable />
+            ) : activeSection === 'global-mapping' ? (
+              <GlobalModelMappingSection />
             ) : (
               <DeploymentAccessGuard
                 loading={deploymentLoading}
